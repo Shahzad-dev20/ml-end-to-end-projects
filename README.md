@@ -56,7 +56,11 @@ Currently a BSAI student and participant in the **Algoverse AI Research Program 
 
 ---
 
-## 📬 Contact
+## � Author
+
+Ahmed Shahzad
+
+## �📬 Contact
 
 Feel free to reach out or connect if you'd like to discuss any of these projects.
 Portfolio: (https://shazeportfolio.netlify.app/)

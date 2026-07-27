@@ -50,4 +50,4 @@ The final model is a trained predictive model saved as a pickle artifact for inf
 Completed and organized as a payroll-focused machine learning project with a ready-to-use model artifact.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad

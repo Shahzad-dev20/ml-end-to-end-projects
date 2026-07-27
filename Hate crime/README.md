@@ -49,4 +49,4 @@ https://drive.google.com/drive/folders/1l4TzZrtK_JZDWTGgJGEeZ3QKDPpT0g1X?usp=dri
 Completed and organized as a hate crime analysis and prediction project with documentation and a model artifact.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad

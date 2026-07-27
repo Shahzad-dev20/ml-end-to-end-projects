@@ -66,4 +66,4 @@ python APP/app.py
 Completed and organized as a full house price prediction project with analysis, modeling, and deployment components.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad

@@ -44,4 +44,4 @@ https://drive.google.com/drive/folders/1Z3oSRiZBz_FQYX9rbJ-vLmF-4jBEelrJ?usp=dri
 Completed and organized as a chronic disease analysis project with notebook-based exploration and modeling.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad

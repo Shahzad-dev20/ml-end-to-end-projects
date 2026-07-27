@@ -77,4 +77,4 @@ risk_scores = model.predict_proba(new_deals)[:, 1]
 Completed and organized as an end-to-end ML project with training, evaluation, and model artifact delivery.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad

@@ -50,4 +50,4 @@ The final model is a trained classification model saved as a pickle artifact for
 Completed and organized as a classification-focused ML project with a ready-to-use model artifact.
 
 ## Author
-Machine Learning Project Portfolio
+Ahmed Shahzad
