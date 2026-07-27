@@ -1,0 +1,80 @@
+{
+  "target": "Is Cancelled",
+  "best_model": "random_forest",
+  "feature_cols": [
+    "Approved/Declined Amount",
+    "Tenor Days",
+    "Small Business Authorized Amount",
+    "Woman Owned Authorized Amount",
+    "Minority Owned Authorized Amount",
+    "Loan Interest Rate Numeric",
+    "Decision Year",
+    "Decision Month",
+    "Decision Quarter",
+    "Program",
+    "Term",
+    "Policy Type",
+    "Decision Authority",
+    "Country Grouped",
+    "Loan Interest Rate Label",
+    "Brokered (bool)",
+    "Working Capital Delegated Authority (bool)",
+    "Is Small Business",
+    "Is Woman Owned",
+    "Is Minority Owned",
+    "Is Multi Country"
+  ],
+  "numeric_features": [
+    "Approved/Declined Amount",
+    "Tenor Days",
+    "Small Business Authorized Amount",
+    "Woman Owned Authorized Amount",
+    "Minority Owned Authorized Amount",
+    "Loan Interest Rate Numeric",
+    "Decision Year",
+    "Decision Month",
+    "Decision Quarter"
+  ],
+  "categorical_features": [
+    "Program",
+    "Term",
+    "Policy Type",
+    "Decision Authority",
+    "Country Grouped",
+    "Loan Interest Rate Label"
+  ],
+  "boolean_features": [
+    "Brokered (bool)",
+    "Working Capital Delegated Authority (bool)",
+    "Is Small Business",
+    "Is Woman Owned",
+    "Is Minority Owned",
+    "Is Multi Country"
+  ],
+  "train_years": [
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021
+  ],
+  "test_years": [
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "test_roc_auc": 0.8286138125811862,
+  "test_pr_auc": 0.17323267947798734
+}

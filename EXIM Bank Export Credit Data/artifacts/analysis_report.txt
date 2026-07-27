@@ -1,0 +1,174 @@
+================================================================================
+DATA ANALYSIS REPORT — EXIM BANK EXPORT CREDIT DATA (data-gov_fy26-q2.csv)
+Prepared for: ML Engineering Team (model development handoff)
+Prepared by: Data Analyst
+================================================================================
+
+1. DATASET OVERVIEW
+--------------------------------------------------------------------------------
+- Source: U.S. Export-Import Bank (EXIM) authorized transaction records.
+- Size: 52,734 rows x 34 raw columns.
+- Time span: Fiscal Year 2007 to Fiscal Year 2026 (Q2), i.e. this is a 19-year
+  longitudinal transaction log, not a snapshot.
+- Grain: one row = one EXIM deal/transaction (e.g. one insurance policy, one
+  loan guarantee, one working-capital facility).
+- Primary key: "Unique Identifier" — verified 100% unique, zero duplicates.
+  Use this as the join/index key; do NOT use "Deal Number" (has 7 nulls and
+  is not guaranteed unique across renewals of the same underlying deal).
+
+2. DATA QUALITY FINDINGS
+--------------------------------------------------------------------------------
+a) Literal "N/A" strings, not true nulls:
+   The raw CSV uses the text "N/A" in many columns instead of an empty cell.
+   Pandas will NOT recognize this as missing by default — it must be replaced
+   explicitly (df.replace('N/A', np.nan)) before any missingness analysis or
+   modeling, or you will silently undercount missing data and may even try to
+   one-hot encode "N/A" as if it were a meaningful category.
+
+b) Column name whitespace:
+   Two column headers have trailing spaces ("Brokered ", "Multiyear Working
+   Capital Extension "). Strip all column names on load (df.columns.str.strip())
+   to avoid KeyErrors later in the pipeline.
+
+c) Missingness is structural, not random (NOT MCAR):
+   - "Working Capital Delegated Authority": 46,598 / 52,734 missing (88%) —
+     this field is only ever populated for Program == "Working Capital" deals.
+   - "Policy Type": 9,258 missing (17.6%) — only used for Insurance deals.
+   - "Loan Interest Rate": 52,354 missing (99.3%) — only used for Loan/
+     Working Capital deals with a fixed or floating rate; most rows are
+     Insurance/Guarantee deals where an interest rate does not apply.
+   - "Primary Lender": 31,029 missing (59%) — many Insurance policies have
+     no financing lender involved.
+   CONCLUSION: missingness here encodes "not applicable to this deal type,"
+   not a data collection failure. Do not impute these columns with mean/mode;
+   either model per-Program subsets separately, or explicitly encode
+   "Not Applicable" as its own category.
+
+d) No fully duplicated rows, no negative monetary values found in any of the
+   7 amount columns. Data passed sanity checks on numeric ranges.
+
+e) "Loan Interest Rate" is a mixed-type column containing both numeric rates
+   (e.g. "2.65") and text labels ("Floating Rate", "Undisbursed"). It cannot
+   be cast to float directly. This notebook splits it into:
+     - "Loan Interest Rate Numeric" (float, NaN for label rows)
+     - "Loan Interest Rate Label" (categorical: Fixed Rate / Floating Rate /
+       Undisbursed / NaN)
+
+3. KEY DISTRIBUTIONAL FINDINGS
+--------------------------------------------------------------------------------
+- Program mix: Insurance dominates the book (43,142 deals, ~82%), followed by
+  Working Capital (6,241), Guarantee (2,971), and Loan (only 380). Any model
+  trained across all Programs together will be Insurance-dominated unless you
+  stratify or weight.
+
+- Term mix: Short Term deals are 91% of the book (48,052), Medium Term 5.8%,
+  Long Term 3.1%. Long Term deals, though rare, carry much larger dollar
+  exposure on average (see below) — a classic "few deals, most of the risk"
+  pattern common in trade finance.
+
+- Country field: "Multiple - Countries" accounts for 64.3% of all rows. This
+  is a program-level umbrella code (used for multi-buyer insurance policies),
+  NOT a literal country. It must not be treated as one level among ~190
+  countries in a naive encoding — recommend giving it its own explicit
+  category and/or building a separate flag "Is Multi Country".
+  After that, United States (12.0%) and Mexico (5.7%) are the next largest
+  single-country categories.
+
+- Deal Cancelled: 857 deals (1.6%) were cancelled after approval — this is a
+  much more usable and business-relevant binary target than "Decision" (below).
+
+- Approved/Declined Amount is extremely right-skewed: median ~$500,000, mean
+  ~$5.44 million, max $10 billion (Private Export Funding Corporation
+  guarantees). Apply a log1p transform for any linear/distance-based model
+  (linear regression, k-NN, SVM, neural nets with standard scaling). Tree-based
+  models (XGBoost, LightGBM, Random Forest) can generally consume the raw
+  skewed values directly.
+
+4. TARGET VARIABLE ASSESSMENT (IMPORTANT FOR MODEL SCOPING)
+--------------------------------------------------------------------------------
+- "Decision" (Approved vs. Declined) is NOT a usable classification target as-is:
+  52,728 Approved vs. only 6 Declined (99.99% / 0.01%). This is far beyond
+  standard imbalance-handling territory (SMOTE, class weights, etc. will not
+  meaningfully help with 6 positive examples). Recommend one of:
+    (i)   Drop this as a modeling target entirely and focus on the fields below.
+    (ii)  Treat as an anomaly/rare-event detection problem rather than standard
+          binary classification, if predicting declines is still of interest.
+
+- Better target candidates for a first model:
+    - "Is Cancelled" (deal cancelled after approval): 1.6% positive rate —
+      still imbalanced but workable with class weighting; business-relevant
+      as an early-warning / credit-risk signal.
+    - "Outstanding Exposure Amount" or "Disbursement Rate" (regression):
+      useful for exposure forecasting / capital-at-risk estimation, and the
+      distribution has enough spread to be a meaningful regression target.
+    - Amount-based regression ("Approved/Declined Amount"): useful if the goal
+      is deal-sizing / pricing support rather than approval prediction.
+
+5. FEATURE ENGINEERING PERFORMED (available in ml_ready_dataset.csv)
+--------------------------------------------------------------------------------
+- Date decomposition: Decision Year / Month / Quarter from "Decision Date".
+- Tenor Days: (Expiration Date - Effective Date) in days — a usable numeric
+  "deal length" feature; NaN for deals lacking one of the two dates (this
+  itself is a meaningful "not yet effective" signal, do not silently impute).
+- Disbursement Rate = Disbursed/Shipped Amount / Approved/Declined Amount.
+- Exposure Remaining Pct = Outstanding Exposure Amount / Approved/Declined Amount.
+- Boolean flags cleanly cast from Yes/No text: Brokered, Deal Cancelled,
+  Working Capital Delegated Authority, Multiyear Working Capital Extension.
+- Binary indicator flags: Is Small Business, Is Woman Owned, Is Minority Owned
+  (derived from whether the respective authorized-amount column is > 0, which
+  is more reliable than any free-text flag column).
+- Country Grouped: top-20 countries kept as-is, all others bucketed into
+  "Other" — keeps one-hot encoding to a manageable ~21 columns instead of ~190.
+
+6. CARDINALITY / ENCODING GUIDANCE
+--------------------------------------------------------------------------------
+Low-cardinality (safe for one-hot encoding):
+   Program (4), Term (3), Policy Type (~12), Decision Authority (~5),
+   Country Grouped (~21), Loan Interest Rate Label (~3).
+
+High-cardinality (do NOT one-hot directly — use frequency encoding, target
+encoding, hashing, or embeddings, or drop for a first-pass baseline model):
+   Primary Applicant, Primary Lender, Primary Exporter, Primary Borrower,
+   Product Description, Primary Export Product NAICS/SIC code, raw Country
+   (~190 levels).
+
+7. OUTLIER HANDLING NOTE
+--------------------------------------------------------------------------------
+IQR-based outlier detection flags a meaningful share of "Approved/Declined
+Amount" as statistical outliers, but these are legitimate large deals (e.g.
+$1B+ guarantees to Private Export Funding Corporation), not data errors.
+Recommend NOT dropping these rows; instead log-transform, winsorize only if
+a specific model family requires it, or model Long Term / large-ticket deals
+as a separate segment from the high-volume Short Term book.
+
+8. DELIVERABLES PROVIDED
+--------------------------------------------------------------------------------
+- EXIM_EDA_ML_Prep.ipynb   : full executed analysis notebook (EDA, cleaning,
+                             visualizations, feature engineering, exports).
+- ml_ready_dataset.csv     : cleaned + feature-engineered dataset, ready to
+                             load directly into a training pipeline.
+- ml_ready_data_dictionary.csv : column name / dtype / % missing reference
+                             for every column in ml_ready_dataset.csv.
+- analysis_report.txt      : this document.
+- *.png                     : saved chart images generated during EDA
+                             (missing_data, program_term_dist, deals_by_year,
+                             top_countries, amount_distribution,
+                             amount_by_program, correlation_heatmap).
+
+9. RECOMMENDED NEXT STEPS FOR THE ML ENGINEER
+--------------------------------------------------------------------------------
+1. Decide on the target variable using Section 4 above before building anything
+   — "Decision" as given will not work as a classifier.
+2. Split train/test by Fiscal Year (time-based split), not randomly, since
+   this is longitudinal data and a real deployment would predict forward in
+   time, not backfill randomly-held-out historical rows.
+3. Consider separate models (or a Program feature interaction) given how
+   different Insurance, Working Capital, Guarantee, and Loan deals are in
+   both volume and typical deal size.
+4. Re-validate missingness patterns on any new data pull — if EXIM changes
+   how it reports "N/A" or adds new Programs/Policy Types, the cleaning
+   logic in this notebook should be reviewed.
+
+================================================================================
+END OF REPORT
+================================================================================
