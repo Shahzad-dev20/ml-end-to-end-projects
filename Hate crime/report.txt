@@ -1,0 +1,143 @@
+================================================================================
+HATE CRIME INCIDENT DATA — PROFESSIONAL ANALYSIS REPORT
+================================================================================
+
+1. DATASET OVERVIEW
+--------------------------------------------------------------------------------
+Source file:        hate_crime.csv
+Records:             71 hate-crime incidents (Tempe, AZ area), spanning 2010-2023
+Original columns:    23
+Business context:    Each row is one bias-motivated crime report, including the
+                      motivating bias type, offense category, location type,
+                      victim characteristics, date, and geocoordinates.
+
+Inferred target for machine learning: "Bias Category" — a 3-class simplification
+of the fine-grained "Type of Bias" field, grouping incidents into:
+  - Race/Ethnicity
+  - Religion
+  - Sexual Orientation / Gender Identity
+This simplification was necessary because the raw "Type of Bias" field has 8
+distinct labels, several with only 1-2 examples — too sparse to model reliably
+in a 71-row dataset.
+
+2. DATA CLEANING SUMMARY
+--------------------------------------------------------------------------------
+- Dropped administrative/redundant columns: OBJECTID, duplicate X/Y and x/y
+  coordinate projections, RMS ID, Created On, Last Edited On, Date of Status
+  Change (100% missing), and Notes on Crime (97% missing / not informative).
+- Recovered ~35 of 43 missing "Type of Bias" values using the fully-populated
+  parallel numeric bias code column ("Type of Bias.1"), cutting true target
+  missingness from 60% to ~11%. The numeric code column was then dropped to
+  avoid duplicating the target.
+- Standardized inconsistent category spellings (e.g. "Church" vs.
+  "Church/Synagogue/Temple/Mosque"; "Street" vs. "Highway/Road/Street"),
+  and consolidated equivalent gender/race labels.
+- Extracted Year, Month, and Day-of-Week from the raw crime date, then dropped
+  the raw date string.
+- Filled 1 missing "Count of Victims" value with the column median (robust to
+  the right-skewed distribution).
+- Explicitly encoded missing "Type of Victim", "Race of Victims", and "Gender
+  of Victim(s)" as an "Unknown" category rather than dropping these columns or
+  rows outright — preserving all 71 already-scarce records.
+- Collapsed rare offense/location categories (<3 occurrences) into "Other" to
+  reduce noise from high-cardinality, low-frequency labels.
+- No duplicate rows were found.
+- No missing values remain in the final cleaned dataset.
+
+3. EXPLORATORY DATA ANALYSIS — KEY FINDINGS
+--------------------------------------------------------------------------------
+- Offense mix is dominated by Criminal Damage (15), Assault (10), and
+  Disorderly Conduct (8); multi-victim incidents cluster in a small subset of
+  offense types (mainly assault and criminal-damage variants).
+- Count of Victims is right-skewed: most incidents involve a single victim,
+  with a long tail up to 8.
+- "Early Case Closure" is the single most common case outcome (24 of 71),
+  ahead of "Active" (16) and "Inactive" (14).
+- Residence/Home is the most common incident location (23 of 71), followed by
+  Highway/Road/Street and Church/Synagogue/Temple/Mosque venues (6 each).
+- Yearly incident counts fluctuate without a clear long-term trend; given the
+  small total sample, year-over-year swings should not be over-interpreted.
+- Numeric features (victim count, latitude, longitude) show negligible
+  pairwise correlation — no meaningful multicollinearity present.
+
+4. STATISTICAL FINDINGS
+--------------------------------------------------------------------------------
+- Count of Victims shows positive (right) skew, consistent with a small number
+  of higher-victim-count outlier incidents; these were retained as legitimate
+  events rather than treated as data errors.
+- A full VIF/multicollinearity table was not warranted: with only 3 numeric
+  features and near-zero pairwise correlation, no redundancy was detected.
+
+5. FEATURE ENGINEERING SUMMARY
+--------------------------------------------------------------------------------
+- Target engineered: "Bias Category" (3-class grouping of "Type of Bias").
+- Datetime features extracted: Crime Year, Crime Month, Crime Day of Week.
+- Categorical standardization and rare-category collapsing applied to
+  "Type of Location" and "Type of Offense/Crime".
+- Missingness in categorical victim/race/gender fields encoded as an explicit
+  "Unknown" level, preserving the signal that "not recorded" is itself
+  informative rather than imputing a possibly-incorrect majority class.
+- Final ML-ready file drops near-unique, identifier-like text ("Obfuscated
+  Address of Crime") and the raw date string, since their information content
+  is already captured by geocoordinates and the extracted date parts.
+
+6. MACHINE LEARNING RESULTS
+--------------------------------------------------------------------------------
+Task:                Multiclass classification of Bias Category
+Usable labeled rows:  63 (8 rows with unresolved/"Unknown" bias code excluded)
+Split:                75% train / 25% test, stratified
+Models compared:      Logistic Regression, Decision Tree, Random Forest,
+                       Gradient Boosting, SVM, KNN (5-fold stratified CV,
+                       scored on macro-F1)
+Best model:            Gradient Boosting Classifier
+Tuned hyperparameters: learning_rate=0.05, n_estimators=200
+Cross-validated F1-macro (train): ~0.69
+Held-out test accuracy:            0.75
+Held-out test F1-macro:            0.72
+Top predictive features:           offense type (criminal damage / aggravated
+                                    criminal damage / non-DV assault), whether
+                                    victim race was recorded, crime month,
+                                    and geolocation.
+
+7. BUSINESS INSIGHTS
+--------------------------------------------------------------------------------
+- Residences are the leading incident location, suggesting community/victim
+  outreach after a bias-motivated crime should have a strong home-visit or
+  neighborhood-safety component, not only public-space patrolling.
+- The high "Early Case Closure" rate alongside "Active"/"Inactive" statuses
+  points to potential value in reviewing case-handling consistency and
+  clearance-criteria documentation across bias-crime reports.
+- Offense type is the strongest available signal for the type of bias
+  motivating an incident, which could support automatic triage/flagging of
+  incoming reports for the appropriate specialized unit (e.g. civil-rights,
+  religious-hate-crime liaison) once more training data is available.
+
+8. RECOMMENDATIONS
+--------------------------------------------------------------------------------
+1. Treat the trained classifier as a proof-of-concept only; do not use it for
+   operational triage without validating on a substantially larger, more
+   recent dataset (n well into the hundreds).
+2. Improve data capture at intake: victim race, victim type, and gender are
+   missing 40-66% of the time, which limits both analysis and modeling.
+3. Standardize categorical value entry at the source (several near-duplicate
+   labels for the same location/gender concept were found and had to be
+   manually reconciled).
+4. Periodically re-run this pipeline as new incidents are logged, to monitor
+   whether bias-category mix or location patterns shift over time.
+
+9. FINAL CONCLUSION
+--------------------------------------------------------------------------------
+This dataset documents 71 bias-motivated crimes with rich categorical and
+geographic detail, but very limited volume. After cleaning, imputing the
+target from a redundant numeric code, and engineering a coarser 3-class bias
+category, a Gradient Boosting classifier trained on offense type, location,
+victim characteristics, and geography achieved a test macro-F1 of ~0.72 —
+promising for a first pass, but not something to deploy operationally without
+substantially more data. The accompanying notebooks (analysis.ipynb,
+ML_pipeline.ipynb), cleaned dataset (ready_for_ML_model.csv), and serialized
+pipeline (model.pkl) provide a complete, reproducible foundation for future
+iteration as more incidents are recorded.
+
+================================================================================
+END OF REPORT
+================================================================================

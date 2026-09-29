@@ -1,0 +1,1 @@
+{"Sqrt_Area": {"min": 300.0, "max": 3900.0, "median": 1180.0}, "Amount_numeric": {"min": 100000.0, "max": 100000000.0, "median": 7800000.0}, "test_r2": 0.8026764025227154, "test_mae_rupees": 2894524.911107485, "test_rmse_rupees": 6235644.178790189}

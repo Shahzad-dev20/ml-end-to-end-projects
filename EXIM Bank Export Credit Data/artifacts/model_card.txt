@@ -1,0 +1,142 @@
+================================================================================
+MODEL CARD — EXIM DEAL CANCELLATION RISK MODEL
+================================================================================
+
+ARTIFACT: cancellation_model_pipeline.pkl
+CONFIG:   model_config.json
+
+--------------------------------------------------------------------------------
+1. WHAT THIS MODEL DOES
+--------------------------------------------------------------------------------
+Predicts the probability that an APPROVED EXIM deal will later be CANCELLED,
+using only information available at the time of approval. Output: a risk score
+between 0 and 1 (via .predict_proba()) plus a binary flag (via .predict()).
+
+Intended use: flag higher-risk approved deals for closer monitoring / follow-up,
+not to auto-reject or auto-approve anything.
+
+--------------------------------------------------------------------------------
+2. TARGET & CLASS BALANCE
+--------------------------------------------------------------------------------
+Target column: "Is Cancelled" (1 = deal was cancelled after approval, 0 = not)
+Base rate: ~1.6% of deals are cancelled (rare-event problem).
+NOTE: "Decision" (Approved/Declined) was considered and REJECTED as a target —
+only 6 Declined deals exist in 52,734 rows (0.01%), which is not enough signal
+for any model to learn from. "Is Cancelled" was the most viable target
+identified in the earlier EDA (see analysis_report.txt).
+
+--------------------------------------------------------------------------------
+3. FEATURES USED (APPROVAL-TIME ONLY — DELIBERATE LEAKAGE PREVENTION)
+--------------------------------------------------------------------------------
+Numeric:
+  Approved/Declined Amount, Tenor Days, Small/Woman/Minority Owned Authorized
+  Amounts, Loan Interest Rate Numeric, Decision Year/Month/Quarter
+
+Categorical:
+  Program, Term, Policy Type, Decision Authority, Country Grouped,
+  Loan Interest Rate Label
+
+Boolean:
+  Brokered, Working Capital Delegated Authority, Is Small/Woman/Minority
+  Owned, Is Multi Country
+
+EXCLUDED ON PURPOSE — POST-OUTCOME LEAKAGE:
+  Disbursed/Shipped Amount, Undisbursed Exposure Amount, Outstanding Exposure
+  Amount, Disbursement Rate, Exposure Remaining Pct.
+  Reason: every cancelled deal in the data shows exactly $0 disbursed. Including
+  these columns would let the model "cheat" by detecting the outcome itself
+  rather than predicting it — a model like this would show near-perfect test
+  accuracy but be useless in production, since at approval time nothing has
+  been disbursed for ANY deal yet (cancelled or not).
+
+EXCLUDED — ZERO-INFORMATION COLUMN:
+  "Multiyear Working Capital Extension" is 100% missing across the entire
+  52,734-row dataset. It was dropped from the feature list rather than passed
+  through and silently discarded by the imputer.
+
+--------------------------------------------------------------------------------
+4. TRAIN / TEST SPLIT
+--------------------------------------------------------------------------------
+Time-based split (not random), to mimic real deployment where only past data
+is available to predict forward:
+  Train: Fiscal Year 2007-2021 (45,824 rows)
+  Test:  Fiscal Year 2022-2026 (6,910 rows, most recent / held out)
+
+--------------------------------------------------------------------------------
+5. MODELS COMPARED
+--------------------------------------------------------------------------------
+Three candidates were trained with class-imbalance handling
+(class_weight="balanced" / scale_pos_weight) and compared on the held-out
+test set:
+
+  Model                 ROC-AUC   PR-AUC (Average Precision)
+  ------------------    -------   ---------------------------
+  Logistic Regression    0.755    0.023
+  Random Forest           0.828    0.173
+  XGBoost (SELECTED)      0.881    0.178
+
+PR-AUC is the more important metric here because the target is rare (~1.6%
+positive) — a random classifier would score ~0.016 on PR-AUC, so XGBoost's
+0.178 represents roughly an 11x improvement over chance at ranking true
+cancellations near the top of the risk list.
+
+--------------------------------------------------------------------------------
+6. SELECTED MODEL: XGBoost
+--------------------------------------------------------------------------------
+  Test ROC-AUC: 0.881
+  Test PR-AUC (Average Precision): 0.178
+  Hyperparameters: n_estimators=300, max_depth=4, learning_rate=0.05,
+  scale_pos_weight=~60 (computed from training class ratio)
+
+--------------------------------------------------------------------------------
+7. HOW TO USE THIS MODEL (DEPLOYMENT)
+--------------------------------------------------------------------------------
+The pickle file contains a COMPLETE scikit-learn Pipeline object — preprocessing
+(imputation, scaling, one-hot encoding) AND the trained XGBoost model together.
+Callers do not need to reimplement any cleaning steps; they only need to supply
+the raw feature columns listed in model_config.json.
+
+    import pickle
+    import pandas as pd
+
+    with open("cancellation_model_pipeline.pkl", "rb") as f:
+        model = pickle.load(f)
+
+    # new_deals must be a DataFrame with the same feature columns listed in
+    # model_config.json under "feature_cols" (missing values are handled
+    # automatically by the pipeline's imputers)
+    risk_scores = model.predict_proba(new_deals)[:, 1]   # probability of cancellation
+    flags = model.predict(new_deals)                      # 0/1 hard label
+
+--------------------------------------------------------------------------------
+8. KNOWN LIMITATIONS
+--------------------------------------------------------------------------------
+- PR-AUC of 0.178 means the model is a meaningful improvement over random
+  guessing, but far from a highly precise cancellation predictor. Recommend
+  using it as a RISK-RANKING / triage tool (e.g. "review the top 5% riskiest
+  approved deals"), not as an automated cancel/approve decision-maker.
+- The class imbalance (1.6% positive) means the model has seen relatively few
+  positive examples in absolute terms (~730 cancelled deals in training).
+  Performance should be re-validated periodically as more cancellation data
+  accumulates.
+- Country field relies on the "top-20 + Other" grouping created during EDA;
+  if EXIM's country mix shifts substantially, this grouping should be
+  reviewed and potentially rebuilt.
+- Model was trained on data through FY2021 and tested on FY2022-2026; before
+  redeploying on new data, retrain periodically (recommend annually) as
+  approval policies, country risk profiles, and program mixes shift over time.
+
+--------------------------------------------------------------------------------
+9. FILES IN THIS DELIVERY
+--------------------------------------------------------------------------------
+- ML_Pipeline_Training.ipynb        : full executed training notebook
+- cancellation_model_pipeline.pkl   : deployable model (preprocessing + XGBoost)
+- model_config.json                 : feature lists, split years, final metrics
+- model_card.txt                    : this document
+- model_comparison_curves.png       : ROC & Precision-Recall curves, all 3 models
+- confusion_matrix_best_model.png   : confusion matrix for XGBoost on test set
+- feature_importance.png            : top 15 features driving XGBoost predictions
+
+================================================================================
+END OF MODEL CARD
+================================================================================
