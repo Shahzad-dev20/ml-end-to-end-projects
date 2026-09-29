@@ -1,0 +1,61 @@
+{
+  "model_name": "RandomForest",
+  "features_numeric": [
+    "R&D Spend",
+    "Administration",
+    "Marketing Spend"
+  ],
+  "features_categorical": [
+    "State"
+  ],
+  "target": "Profit",
+  "test_set_metrics": {
+    "R2": 0.8989355948596417,
+    "MAE": 6265.407030000014,
+    "RMSE": 9046.610095252501
+  },
+  "cv_results": [
+    {
+      "Model": "RandomForest",
+      "CV_R2_mean": 0.9455120522723149,
+      "CV_R2_std": 0.030974910209293438,
+      "CV_MAE_mean": 7158.328240000007,
+      "CV_RMSE_mean": 9002.246990104293
+    },
+    {
+      "Model": "Lasso",
+      "CV_R2_mean": 0.9340486626353421,
+      "CV_R2_std": 0.03227212290281621,
+      "CV_MAE_mean": 7423.838756791862,
+      "CV_RMSE_mean": 9548.009967014561
+    },
+    {
+      "Model": "LinearRegression",
+      "CV_R2_mean": 0.9340039511036282,
+      "CV_R2_std": 0.03230145613316874,
+      "CV_MAE_mean": 7425.881525348715,
+      "CV_RMSE_mean": 9550.676105680099
+    },
+    {
+      "Model": "Ridge",
+      "CV_R2_mean": 0.9304453887322248,
+      "CV_R2_std": 0.037784970378009056,
+      "CV_MAE_mean": 7715.9940980553565,
+      "CV_RMSE_mean": 9725.867836268892
+    },
+    {
+      "Model": "GradientBoosting",
+      "CV_R2_mean": 0.901301490302974,
+      "CV_R2_std": 0.03270588322515646,
+      "CV_MAE_mean": 9186.346858236295,
+      "CV_RMSE_mean": 11717.838156479458
+    },
+    {
+      "Model": "SVR",
+      "CV_R2_mean": -0.2746145396892814,
+      "CV_R2_std": 0.2992158745858949,
+      "CV_MAE_mean": 35204.72234380946,
+      "CV_RMSE_mean": 42602.875527304524
+    }
+  ]
+}

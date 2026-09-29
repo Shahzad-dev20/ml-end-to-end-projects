@@ -1,0 +1,39 @@
+50 STARTUPS - PROFIT PREDICTION - SUMMARY
+==========================================
+
+DATASET
+- 50 rows, 5 columns: R&D Spend, Administration, Marketing Spend, State, Profit
+- No missing values, no duplicates, clean data
+
+EDA HIGHLIGHTS
+- R&D Spend correlates with Profit at ~0.97 (dominant driver)
+- Marketing Spend correlates with Profit at ~0.75 (secondary driver)
+- Administration correlates with Profit at ~0.20 (weak)
+- State has no strong effect on Profit
+
+MODEL COMPARISON (5-fold CV, R2 score)
+1. Random Forest       0.946   <- SELECTED
+2. Lasso                0.934
+3. Linear Regression    0.934
+4. Ridge                0.930
+5. Gradient Boosting    0.901
+6. SVR                 -0.275  (rejected, poor fit without tuning)
+
+FINAL MODEL: Random Forest Regressor
+- Test set R2:   0.899
+- Test set MAE:  6,265
+- Test set RMSE: 9,047
+
+PRODUCTION ARTIFACTS
+- model/startup_profit_pipeline.joblib  (full sklearn pipeline: preprocessing + model)
+- model/model_metadata.json             (model name, features, metrics)
+- predict_profit() function for inference on new raw records
+
+FILES DELIVERED
+- notebooks/01_data_inspection.ipynb
+- notebooks/02_eda.ipynb
+- notebooks/03_modeling_pipeline.ipynb
+- report/analysis_report.md
+- report/analysis_summary.txt
+- model/startup_profit_pipeline.joblib
+- model/model_metadata.json
