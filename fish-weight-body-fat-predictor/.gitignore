@@ -15,6 +15,11 @@ __pycache__/
 # Jupyter
 .ipynb_checkpoints/
 
+# Project data and generated assets (keep local only)
+data/
+data/raw/
+data/processed/
+
 # Editor/OS files
 .vscode/
 .idea/
