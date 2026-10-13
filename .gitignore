@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.py[codz]
 *$py.class
 
@@ -77,6 +78,18 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+**/.ipynb_checkpoints/
+
+# Local environments and caches
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.DS_Store
+**/.streamlit/
+**/*.tmp
+**/*.log
 
 # IPython
 profile_default/

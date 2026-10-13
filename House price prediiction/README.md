@@ -1,45 +1,46 @@
 # House Price Prediction Project
 
-## Project Overview
-This project builds an end-to-end machine learning solution for predicting house prices based on property-related features. It includes data preprocessing, exploratory analysis, model training, and a simple web application for making predictions.
+## Project overview
+This project builds a machine learning workflow for house price prediction using structured property and location features. It includes exploratory analysis, preprocessing, a production-style training pipeline, and a Streamlit application for inference.
 
-## Problem Statement
-Real-estate pricing depends on multiple factors such as location, size, number of bedrooms, and other property characteristics. The goal of this project is to create a reliable predictive model that can estimate house prices accurately and make the workflow accessible through a simple app.
+## Problem statement
+Real estate pricing depends on several factors, including location, size, and property attributes. The aim is to create a model that can estimate prices from a standardized set of features and provide a simple user-facing interface.
 
-## Business Value
+## Business value
 - Helps estimate property values quickly
-- Supports decision-making for buyers, sellers, and real-estate analysts
-- Demonstrates a complete ML pipeline from data preparation to deployment
-- Provides a practical prediction interface through a web app
+- Supports buyers, sellers, and analysts in decision-making
+- Demonstrates a full ML workflow from preprocessing to deployment
+- Provides a lightweight web-based prediction interface
 
-## Project Workflow
-1. Data analysis and exploratory investigation
+## Workflow
+1. Data exploration and analysis
 2. Data cleaning and preprocessing
 3. Feature engineering and model training
-4. Model evaluation and selection
-5. Deployment through a lightweight application
+4. Model evaluation and comparison
+5. Model export and web inference
 
 ## Dataset
-The project uses a house price dataset containing property attributes and target price values.
+The project relies on a house price dataset containing property features and target values.
 
 Download the dataset here:
 https://drive.google.com/drive/folders/1qFpVzE41vVOaLfq2gwIkRgart-MyATX1?usp=drive_link
 
-## Model Summary
-The final model is a machine learning pipeline trained for house price prediction.
+## Model summary
+The final pipeline is trained as a supervised regression model using an XGBoost-based workflow with custom frequency encoding for categorical features.
 
-## Project Structure
+## Project structure
 - notebooks/analysis.ipynb — exploratory analysis
-- notebooks/Data_Preprocessing.ipynb — data cleaning and preprocessing steps
-- notebooks/Production_ML_Pipeline.ipynb — training and production pipeline workflow
-- models/house_price_xgb_pipeline.pkl — trained model artifact
-- APP/app.py — prediction web application
-- APP/feature_encoder.py — feature encoding utilities
-- artifacts/city_stats.json — city-level statistics
-- artifacts/locations.json — location mapping details
-- artifacts/overall_stats.json — overall dataset statistics
+- notebooks/Data_Preprocessing.ipynb — cleaning and preprocessing
+- notebooks/Production_ML_Pipeline.ipynb — training and pipeline logic
+- APP/app.py — Streamlit prediction interface
+- APP/feature_encoder.py — custom frequency encoder used in the production pipeline
+- APP/requirements.txt — app dependencies
+- models/house_price_xgb_pipeline.pkl — saved trained model
+- artifacts/city_stats.json — city-level aggregated stats
+- artifacts/locations.json — location mappings
+- artifacts/overall_stats.json — dataset summary stats
 
-## Tech Stack
+## Tech stack
 - Python
 - pandas
 - numpy
@@ -47,23 +48,33 @@ The final model is a machine learning pipeline trained for house price predictio
 - XGBoost
 - matplotlib
 - seaborn
-- Flask / Python app interface
+- plotly
+- Streamlit
 - Jupyter Notebook
 
-## How to Use
-1. Install dependencies from requirements.txt
-2. Download and place the dataset in the project folder
-3. Open the notebooks for preprocessing and training
-4. Run the app in APP/ to make predictions
+## Setup
+From the project directory:
 
-## Running the Application
-From the project folder, run:
 ```bash
-python APP/app.py
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+pip install -r APP/requirements.txt
 ```
 
-## Project Status
-Completed and organized as a full house price prediction project with analysis, modeling, and deployment components.
+## Run the app
+Use the app entry point expected by the project implementation:
+
+```bash
+streamlit run APP/app.py
+```
+
+The README entry `python APP/app.py` is not the correct launch syntax for this project because the application is built as a Streamlit app rather than a plain Python script.
+
+## Project status
+This project is complete as a portfolio-level regression exercise with data preparation, modeling, artifact export, and inference tooling.
 
 ## Author
 Ahmed Shahzad
