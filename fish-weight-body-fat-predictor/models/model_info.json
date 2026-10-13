@@ -1,0 +1,170 @@
+{
+  "fish": {
+    "model_file": "fish_model.joblib",
+    "target": "Weight",
+    "features": [
+      {
+        "name": "Species",
+        "kind": "category",
+        "choices": [
+          "Bream",
+          "Parkki",
+          "Perch",
+          "Pike",
+          "Roach",
+          "Smelt",
+          "Whitefish"
+        ],
+        "default": "Perch"
+      },
+      {
+        "name": "Length1",
+        "kind": "number",
+        "min": 7.5,
+        "max": 59.0,
+        "default": 25.3
+      },
+      {
+        "name": "Length2",
+        "kind": "number",
+        "min": 8.4,
+        "max": 63.4,
+        "default": 27.4
+      },
+      {
+        "name": "Length3",
+        "kind": "number",
+        "min": 8.8,
+        "max": 68.0,
+        "default": 29.7
+      },
+      {
+        "name": "Height",
+        "kind": "number",
+        "min": 1.73,
+        "max": 18.96,
+        "default": 7.79
+      },
+      {
+        "name": "Width",
+        "kind": "number",
+        "min": 1.05,
+        "max": 8.14,
+        "default": 4.28
+      }
+    ],
+    "metrics": {
+      "r2": 0.9401,
+      "mae": 66.49,
+      "rmse": 107.37,
+      "cv_r2": 0.9065,
+      "n_train": 126,
+      "n_test": 32
+    }
+  },
+  "bodyfat": {
+    "model_file": "bodyfat_model.joblib",
+    "target": "BodyFat",
+    "features": [
+      {
+        "name": "Age",
+        "kind": "number",
+        "min": 22.0,
+        "max": 81.0,
+        "default": 43.0
+      },
+      {
+        "name": "Weight",
+        "kind": "number",
+        "min": 125.0,
+        "max": 363.15,
+        "default": 176.75
+      },
+      {
+        "name": "Height",
+        "kind": "number",
+        "min": 64.0,
+        "max": 77.5,
+        "default": 70.0
+      },
+      {
+        "name": "Neck",
+        "kind": "number",
+        "min": 31.1,
+        "max": 51.2,
+        "default": 38.0
+      },
+      {
+        "name": "Chest",
+        "kind": "number",
+        "min": 83.4,
+        "max": 136.2,
+        "default": 99.7
+      },
+      {
+        "name": "Abdomen",
+        "kind": "number",
+        "min": 70.4,
+        "max": 148.1,
+        "default": 91.0
+      },
+      {
+        "name": "Hip",
+        "kind": "number",
+        "min": 85.3,
+        "max": 147.7,
+        "default": 99.3
+      },
+      {
+        "name": "Thigh",
+        "kind": "number",
+        "min": 49.3,
+        "max": 87.3,
+        "default": 59.0
+      },
+      {
+        "name": "Knee",
+        "kind": "number",
+        "min": 33.0,
+        "max": 49.1,
+        "default": 38.5
+      },
+      {
+        "name": "Ankle",
+        "kind": "number",
+        "min": 19.1,
+        "max": 33.9,
+        "default": 22.8
+      },
+      {
+        "name": "Biceps",
+        "kind": "number",
+        "min": 24.8,
+        "max": 45.0,
+        "default": 32.1
+      },
+      {
+        "name": "Forearm",
+        "kind": "number",
+        "min": 21.0,
+        "max": 34.9,
+        "default": 28.8
+      },
+      {
+        "name": "Wrist",
+        "kind": "number",
+        "min": 15.8,
+        "max": 21.4,
+        "default": 18.3
+      }
+    ],
+    "metrics": {
+      "r2": 0.6483,
+      "mae": 3.59,
+      "rmse": 4.58,
+      "cv_r2": 0.6855,
+      "n_train": 197,
+      "n_test": 50
+    }
+  }
+}

@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linear Regression - Fish Weight and Body Fat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist:#e6f0f2;
+    --paper:#fbfdfd;
+    --deep:#0a2a3b;
+    --deep-2:#103a4f;
+    --tide:#0e7c8f;
+    --tide-dark:#0a6272;
+    --foam:#a8ecf2;
+    --amber:#f6b44f;
+    --ink:#10222c;
+    --muted:#5b707b;
+    --line:#cfdde1;
+    --danger:#ffb4a8;
+    --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin:0; min-height:100vh; color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.55;
+    background:
+      radial-gradient(1200px 500px at 85% -10%, #cfe8ec 0%, transparent 60%),
+      var(--mist);
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 56px 20px 72px; }
+
+  /* Header */
+  header { margin-bottom: 36px; max-width: 640px; }
+  h1 {
+    font-family:var(--display); font-weight:800; letter-spacing:-.03em; line-height:1.02;
+    font-size: clamp(2.3rem, 6vw, 3.75rem); margin:0 0 14px; color:var(--deep);
+  }
+  header p { margin:0; color:var(--muted); font-size:1.08rem; max-width:52ch; }
+  .author {
+    margin-top: 10px; font-size: .85rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--tide-dark);
+  }
+
+  /* Tabs */
+  .tabs {
+    display:inline-flex; gap:4px; padding:5px; margin-bottom:22px; flex-wrap:wrap;
+    background:var(--paper); border:1px solid var(--line); border-radius:999px;
+  }
+  .tab {
+    padding:10px 22px; border:0; border-radius:999px; background:transparent; cursor:pointer;
+    font:600 .95rem var(--body); color:var(--muted); transition: background .2s, color .2s;
+  }
+  .tab:hover { color:var(--deep); }
+  .tab.active { background:var(--deep); color:#fff; }
+  .tab:focus-visible, button.go:focus-visible, input:focus-visible, select:focus-visible {
+    outline:3px solid var(--tide); outline-offset:2px;
+  }
+
+  /* Panels */
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .panel-intro { max-width:68ch; margin:0 0 22px; }
+  .panel-intro p { margin:0; color:var(--ink); }
+  .panel-intro .source { margin-top:6px; color:var(--muted); font-size:.88rem; }
+
+  .grid { display:grid; grid-template-columns: 1.05fr 1fr; gap:22px; align-items:stretch; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+  /* Form card */
+  form {
+    background:var(--paper); border:1px solid var(--line); border-radius:24px; padding:28px;
+    box-shadow: 0 1px 0 #fff inset, 0 18px 40px -28px rgba(10,42,59,.35);
+    display:flex; flex-direction:column;
+  }
+  .field { margin-bottom:20px; }
+  .field-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:6px; }
+  label { font-weight:600; font-size:.95rem; color:var(--deep); }
+  .hint { color:var(--muted); font-size:.8rem; font-weight:400; white-space:nowrap; }
+
+  input, select {
+    width:100%; padding:13px 14px; font:500 1.05rem var(--body); color:var(--ink);
+    background:#fff; border:1.5px solid var(--line); border-radius:12px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:hover, select:hover { border-color:#a9c0c7; }
+  input:focus, select:focus { border-color:var(--tide); box-shadow:0 0 0 4px rgba(14,124,143,.14); outline:none; }
+  input:focus-visible, select:focus-visible { outline:none; }
+  select {
+    appearance:none; padding-right:42px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1.5l6 6 6-6' fill='none' stroke='%230a2a3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 16px center;
+  }
+
+  /* Training-range gauge under each number input */
+  .range { position:relative; height:6px; margin:12px 2px 0; border-radius:99px; background:#e3edf0; }
+  .range-train { position:absolute; top:0; bottom:0; border-radius:99px; background:var(--foam); }
+  .range-dot {
+    position:absolute; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+    background:var(--tide); border:3px solid #fff; box-shadow:0 0 0 1px var(--tide);
+    transition: left .25s cubic-bezier(.3,.8,.3,1), background .2s, box-shadow .2s;
+  }
+  .range.out .range-dot { background:var(--amber); box-shadow:0 0 0 1px #c47d0e; }
+  .range-note { font-size:.78rem; color:var(--muted); margin-top:8px; min-height:1.2em; }
+  .range.out + .range-note { color:#9a5b00; font-weight:600; }
+
+  button.go {
+    margin-top:auto; padding:15px 24px; width:100%; border:0; border-radius:14px; cursor:pointer;
+    background:var(--tide); color:#fff; font:700 1.05rem var(--display); letter-spacing:.01em;
+    transition: background .2s, transform .1s;
+  }
+  button.go:hover { background:var(--tide-dark); }
+  button.go:active { transform: translateY(1px); }
+  button.go[disabled] { opacity:.65; cursor:progress; }
+
+  /* Result column */
+  .side { display:flex; flex-direction:column; gap:22px; }
+
+  .result {
+    position:relative; overflow:hidden; flex:1; min-height:230px; padding:30px 30px 26px;
+    color:#fff; border-radius:24px;
+    background:
+      radial-gradient(circle at 100% 100%, rgba(168,236,242,.16), transparent 55%),
+      linear-gradient(160deg, var(--deep-2), var(--deep));
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  /* fish-scale texture */
+  .result::before {
+    content:""; position:absolute; inset:0; opacity:.5; pointer-events:none;
+    background:
+      radial-gradient(circle at 50% 100%, transparent 58%, rgba(168,236,242,.09) 59%, rgba(168,236,242,.09) 62%, transparent 63%) 0 0 / 38px 19px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 75%);
+            mask-image: linear-gradient(180deg, #000 0%, transparent 75%);
+  }
+  .result > * { position:relative; }
+  .result .hint { color:#9fc3cd; font-size:.92rem; margin-bottom:4px; white-space:normal; }
+  .result .big {
+    font-family:var(--display); font-weight:800; letter-spacing:-.035em; line-height:1;
+    font-size: clamp(3rem, 8vw, 4.9rem); color:#fff; word-break:break-word;
+  }
+  .result .big .unit { font-size:.38em; font-weight:600; letter-spacing:0; color:var(--foam); margin-left:.25em; }
+  .result .big.idle { color:rgba(255,255,255,.28); }
+  .result .idle-note { margin-top:12px; color:#9fc3cd; font-size:.95rem; max-width:34ch; }
+  .warn {
+    margin-top:14px; padding:10px 12px; border-radius:10px; font-size:.86rem; line-height:1.4;
+    background:rgba(246,180,79,.14); color:#ffd48e; border:1px solid rgba(246,180,79,.35);
+  }
+  .error {
+    margin-top:6px; padding:12px 14px; border-radius:12px; font-size:.95rem;
+    background:rgba(255,180,168,.12); color:var(--danger); border:1px solid rgba(255,180,168,.35);
+  }
+  .result.pop .big { animation: pop .45s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes pop { from { transform: translateY(8px) scale(.97); opacity:.2; } to { transform:none; opacity:1; } }
+
+  /* Model quality */
+  .quality {
+    display:grid; grid-template-columns: auto 1fr 1fr; gap:18px; align-items:center;
+    background:var(--paper); border:1px solid var(--line); border-radius:20px; padding:18px 22px;
+  }
+  .quality .title { grid-column: 1 / -1; font-weight:600; font-size:.9rem; color:var(--muted); margin-bottom:-6px; }
+  .ring { position:relative; width:84px; height:84px; }
+  .ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .ring circle { fill:none; stroke-width:7; }
+  .ring .bg { stroke:#e3edf0; }
+  .ring .fg { stroke:var(--tide); stroke-linecap:round; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1); }
+  .ring .val {
+    position:absolute; inset:0; display:grid; place-items:center; text-align:center;
+    font:800 1.05rem/1 var(--display); color:var(--deep);
+  }
+  .ring .val small { display:block; font:500 .65rem var(--body); color:var(--muted); margin-top:3px; }
+  .metric .k { font-size:.8rem; color:var(--muted); }
+  .metric .v { font:700 1.35rem/1.2 var(--display); color:var(--deep); }
+  .metric .v span { font:500 .8rem var(--body); color:var(--muted); margin-left:3px; }
+  @media (max-width: 460px) {
+    form, .result { padding:22px; }
+    .quality { grid-template-columns: auto 1fr; }
+    .quality .metric:last-child { grid-column: 2; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Fish weight and body fat predictor</h1>
+    <p>Two linear regression models. Pick one, enter your measurements, and get an estimate with a check on whether your numbers fit the data the model learned from.</p>
+    <div class="author">Developed by Ahmed Shahzad</div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Choose a model">
+    {% for key, cfg in datasets.items() %}
+      <button class="tab {{ 'active' if loop.first }}" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}" aria-controls="panel-{{ key }}" data-target="{{ key }}">{{ cfg["title"] }}</button>
+    {% endfor %}
+  </div>
+
+  {% for key, cfg in datasets.items() %}
+  <section class="panel {{ 'active' if loop.first }}" id="panel-{{ key }}" role="tabpanel">
+    <div class="panel-intro">
+      <p>{{ cfg["description"] }}</p>
+      <p class="source">Data: {{ cfg["source"] }}</p>
+    </div>
+
+    <div class="grid">
+      <form data-key="{{ key }}">
+        {% for f in cfg["features"] %}
+          <div class="field">
+            <div class="field-head">
+              <label for="{{ key }}-{{ f['name'] }}">{{ f["label"] }}</label>
+              {% if f["kind"] == "number" %}<span class="hint">trained on {{ f["min"] }} to {{ f["max"] }}</span>{% endif %}
+            </div>
+            {% if f["kind"] == "category" %}
+              <select id="{{ key }}-{{ f['name'] }}" name="{{ f['name'] }}">
+                {% for c in f["choices"] %}
+                  <option value="{{ c }}" {{ 'selected' if c == f["default"] }}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="number" step="any" min="0" id="{{ key }}-{{ f['name'] }}" name="{{ f['name'] }}" value="{{ f['default'] }}" data-min="{{ f['min'] }}" data-max="{{ f['max'] }}" required>
+              <div class="range" aria-hidden="true"><span class="range-train"></span><span class="range-dot"></span></div>
+              <div class="range-note"></div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="go">Predict {{ cfg["target_label"] | lower }}</button>
+      </form>
+
+      <div class="side">
+        <div class="result" id="result-{{ key }}" aria-live="polite">
+          <div class="hint">{{ cfg["target_label"] }} ({{ cfg["unit"] }})</div>
+          <div class="big idle">-</div>
+          <div class="idle-note">Enter the measurements and press Predict to see the estimate.</div>
+        </div>
+
+        <div class="quality">
+          <div class="title">How accurate is this model? Tested on {{ cfg["metrics"]["n_test"] }} samples it never saw.</div>
+          <div class="ring" title="R² explains how much of the variation the model captures">
+            <svg viewBox="0 0 84 84" aria-hidden="true">
+              <circle class="bg" cx="42" cy="42" r="36"></circle>
+              <circle class="fg" cx="42" cy="42" r="36" data-r2="{{ cfg['metrics']['r2'] }}"></circle>
+            </svg>
+            <div class="val"><div>{{ cfg["metrics"]["r2"] }}<small>R²</small></div></div>
+          </div>
+          <div class="metric">
+            <div class="k">Average miss (MAE)</div>
+            <div class="v">{{ cfg["metrics"]["mae"] }}<span>{{ cfg["unit"] }}</span></div>
+          </div>
+          <div class="metric">
+            <div class="k">Typical error (RMSE)</div>
+            <div class="v">{{ cfg["metrics"]["rmse"] }}<span>{{ cfg["unit"] }}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+</main>
+
+<script>
+  /* Tabs */
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      document.getElementById('panel-' + tab.dataset.target).classList.add('active');
+      requestAnimationFrame(drawRings);
+    });
+  });
+
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+  /* R-squared rings */
+  const CIRC = 2 * Math.PI * 36;
+  function drawRings() {
+    document.querySelectorAll('.ring .fg').forEach(c => {
+      const r2 = Math.min(1, Math.max(0, parseFloat(c.dataset.r2) || 0));
+      c.style.strokeDasharray = CIRC;
+      c.style.strokeDashoffset = CIRC * (1 - r2);
+    });
+  }
+  document.querySelectorAll('.ring .fg').forEach(c => {
+    c.style.strokeDasharray = CIRC;
+    c.style.strokeDashoffset = CIRC;
+  });
+  requestAnimationFrame(() => requestAnimationFrame(drawRings));
+
+  /* Training-range gauges */
+  function updateRange(input) {
+    const wrap = input.parentElement.querySelector('.range');
+    if (!wrap) return;
+    const note = wrap.nextElementSibling;
+    const min = parseFloat(input.dataset.min), max = parseFloat(input.dataset.max);
+    const v = parseFloat(input.value);
+    if (!isFinite(min) || !isFinite(max)) return;
+    const pad = ((max - min) || 1) * 0.35;
+    const lo = Math.max(0, min - pad), hi = max + pad;
+    const pct = x => Math.min(100, Math.max(0, (x - lo) / (hi - lo) * 100));
+    const train = wrap.querySelector('.range-train');
+    train.style.left = pct(min) + '%';
+    train.style.width = (pct(max) - pct(min)) + '%';
+    wrap.querySelector('.range-dot').style.left = (isFinite(v) ? pct(v) : 0) + '%';
+    const out = isFinite(v) && (v < min || v > max);
+    wrap.classList.toggle('out', out);
+    note.textContent = !isFinite(v) ? '' : out ? 'Outside the range the model learned from, so treat the result with care.' : 'Within the range the model learned from.';
+  }
+  document.querySelectorAll('input[data-min]').forEach(inp => {
+    updateRange(inp);
+    inp.addEventListener('input', () => updateRange(inp));
+  });
+
+  /* Count-up for the prediction */
+  function countUp(el, finalText) {
+    const target = Number(finalText);
+    if (!isFinite(target) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = finalText; return; }
+    const decimals = (String(finalText).split('.')[1] || '').length;
+    const t0 = performance.now(), dur = 650;
+    (function tick(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = p < 1 ? (target * eased).toFixed(decimals) : finalText;
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+
+  /* Predict */
+  document.querySelectorAll('form[data-key]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const key = form.dataset.key;
+      const box = document.getElementById('result-' + key);
+      const btn = form.querySelector('button.go');
+      const label = btn.textContent;
+      const payload = {};
+      form.querySelectorAll('input, select').forEach(el => { payload[el.name] = el.value; });
+      btn.disabled = true; btn.textContent = 'Predicting...';
+      try {
+        const res = await fetch('/api/predict/' + key, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        let html = '<div class="hint">' + esc(data.label) + ' (' + esc(data.unit) + ')</div>' +
+                   '<div class="big"><span class="num">' + esc(data.prediction) + '</span><span class="unit">' + esc(data.unit) + '</span></div>';
+        (data.warnings || []).forEach(w => { html += '<div class="warn">&#9888; ' + esc(w) + '</div>'; });
+        box.innerHTML = html;
+        box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+        countUp(box.querySelector('.num'), String(data.prediction));
+      } catch (err) {
+        box.innerHTML = '<div class="hint">Could not predict</div><div class="error">' + esc(err.message) + ' Check the values and try again.</div>';
+      } finally {
+        btn.disabled = false; btn.textContent = label;
+      }
+    });
+  });
+</script>
+</body>
+</html>
