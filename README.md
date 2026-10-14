@@ -20,6 +20,7 @@ The goal is to demonstrate practical ML work from raw-data handling through prep
 | [Lungs cancer](./Lungs%20cancer) | Healthcare | Classification | Includes a saved model and analysis notebook |
 | [U.S._Chronic_Disease_Indicators](./U.S._Chronic_Disease_Indicators) | Public health | EDA / analysis | Notebook-based project with public health indicators |
 | [US_Employee_payroll](./US_Employee_payroll) | HR / workforce | Regression / predictive analytics | Includes a trained payroll prediction model |
+| [maternal-risk-pulsar-classifier](./maternal-risk-pulsar-classifier) | Healthcare / signal analysis | Multi-class + binary classification | Flask + Gradio apps for maternal risk and pulsar detection |
 | [fish-weight-body-fat-predictor](./fish-weight-body-fat-predictor) | Nutrition / sports analytics | Regression | Flask + Gradio web apps with two saved models |
 
 ## Technologies used
@@ -75,6 +76,7 @@ ml-end-to-end-projects/
 ├── Lungs cancer/
 ├── U.S._Chronic_Disease_Indicators/
 ├── US_Employee_payroll/
+├── maternal-risk-pulsar-classifier/
 ├── fish-weight-body-fat-predictor/
 └── .git/
 ```
