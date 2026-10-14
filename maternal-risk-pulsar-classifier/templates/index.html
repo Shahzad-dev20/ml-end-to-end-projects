@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Two Pulses - Maternal Risk and Pulsar Spotter</title>
+<meta name="description" content="Two machine-learning models, one pipeline: predict maternal health risk from vital signs and spot real pulsars among radio-telescope candidates.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230B0F26'/%3E%3Cpath d='M6 36h12l5-16 8 30 7-22 4 8h16' fill='none' stroke='%237CF5E1' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page:#E8ECF6;
+    --card:#FFFFFF;
+    --ink:#0D1230;
+    --ink-2:#2A3158;
+    --muted:#5A6385;
+    --line:#D3D9EA;
+    --blue:#3A2BFF;
+    --blue-soft:#E4E2FF;
+    --night:#0B0F26;
+    --night-2:#151B40;
+    --on-night:#E9ECFA;
+    --on-night-muted:#A3ABD0;
+    --mint:#12B886;
+    --amber:#F5A524;
+    --coral:#FF4D6D;
+    --violet:#8C7BFF;
+    --slate:#9AA3C7;
+    --display:"Syne","Segoe UI",system-ui,sans-serif;
+    --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0; min-height:100vh; color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.55;
+    background:
+      radial-gradient(900px 480px at 92% -8%, #D8D6FF 0%, transparent 62%),
+      radial-gradient(700px 420px at -6% 30%, #DDF3EE 0%, transparent 60%),
+      var(--page);
+  }
+  .wrap { max-width:1200px; margin:0 auto; padding:0 24px; }
+  button { font-family:inherit; }
+  :focus-visible { outline:3px solid var(--blue); outline-offset:3px; border-radius:6px; }
+
+  /* Top bar */
+  .top { display:flex; justify-content:space-between; align-items:center; padding:22px 0 0; gap:16px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:10px; font:800 1.2rem var(--display); letter-spacing:-.02em; }
+  .brand svg { width:34px; height:34px; }
+  .by { color:var(--muted); font-size:.92rem; }
+
+  /* Hero */
+  .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.08fr); gap:44px; align-items:center; padding:34px 0 40px; }
+  h1 {
+    font:800 clamp(2.6rem,5.8vw,4.7rem)/.95 var(--display); letter-spacing:-.04em; margin:0 0 20px; color:var(--ink);
+  }
+  .lede { margin:0; max-width:46ch; color:var(--ink-2); font-size:1.12rem; min-height:5.2em; }
+
+  .tabs {
+    position:relative; display:inline-grid; grid-auto-flow:column; grid-auto-columns:1fr; margin-top:22px;
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:5px;
+  }
+  .tab-ind {
+    position:absolute; top:5px; bottom:5px; left:5px; width:calc(50% - 5px); border-radius:13px; background:var(--ink);
+    transition:transform .35s cubic-bezier(.3,.8,.3,1);
+  }
+  .tab {
+    position:relative; z-index:1; display:flex; align-items:center; gap:10px; padding:13px 22px; border:0; background:transparent;
+    font:700 1rem var(--body); color:var(--ink-2); cursor:pointer; border-radius:13px; transition:color .25s; white-space:nowrap;
+  }
+  .tab svg { width:22px; height:22px; flex:none; }
+  .tab[aria-selected="true"] { color:#fff; }
+
+  /* Scope: the memorable element */
+  .scope {
+    position:relative; background:var(--night); border-radius:28px; overflow:hidden; aspect-ratio:16/10.5; min-height:250px;
+    box-shadow:0 40px 70px -36px rgba(13,18,48,.75), 0 0 0 1px rgba(255,255,255,.04) inset;
+  }
+  .scope canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .scope-read { position:absolute; left:26px; top:22px; pointer-events:none; }
+  .scope-big { font:700 clamp(1.9rem,4vw,2.9rem)/1 var(--mono); letter-spacing:-.04em; color:var(--trace,#7CF5E1); text-shadow:0 0 22px color-mix(in srgb, var(--trace,#7CF5E1) 55%, transparent); transition:color .4s; }
+  .scope-big small { font-size:.45em; letter-spacing:0; margin-left:8px; color:var(--on-night-muted); text-shadow:none; }
+  .scope-sub { margin-top:8px; color:var(--on-night-muted); font-size:.88rem; max-width:30ch; }
+  .scope-cap { position:absolute; right:22px; bottom:16px; color:rgba(163,171,208,.75); font-size:.78rem; text-align:right; max-width:34ch; pointer-events:none; }
+
+  /* Console */
+  .console { display:grid; grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr); gap:24px; align-items:start; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:24px; }
+  .form { padding:26px 26px 22px; }
+  .form h2 { margin:0 0 4px; font:700 1.35rem var(--display); letter-spacing:-.02em; }
+  .form .sub { margin:0 0 16px; color:var(--muted); font-size:.95rem; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+  .chip {
+    display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; border:1.5px solid var(--line);
+    background:#fff; font:600 .88rem var(--body); color:var(--ink-2); cursor:pointer; transition:border-color .2s, background .2s, transform .15s;
+  }
+  .chip:hover { border-color:var(--ink-2); }
+  .chip:active { transform:scale(.97); }
+  .chip[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--c,var(--slate)); flex:none; }
+
+  .group-h { margin:22px 0 10px; font:700 1rem var(--display); color:var(--ink-2); padding-top:16px; border-top:1px solid var(--line); }
+  .field { margin:0 0 16px; }
+  .field-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .field label { font-weight:600; font-size:.96rem; color:var(--ink); }
+  .field .unit { color:var(--muted); font-size:.85rem; margin-left:6px; font-weight:500; }
+  .num {
+    width:7.6rem; padding:7px 10px; font:700 1rem var(--mono); color:var(--ink); text-align:right;
+    background:#F6F8FD; border:1.5px solid var(--line); border-radius:10px;
+  }
+  .num:focus { background:#fff; border-color:var(--blue); outline:none; box-shadow:0 0 0 3px var(--blue-soft); }
+  .rng {
+    -webkit-appearance:none; appearance:none; width:100%; height:10px; border-radius:99px; margin:12px 0 4px; outline:none; cursor:pointer;
+    background:var(--track,#DDE2F0);
+  }
+  .rng::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid var(--blue); box-shadow:0 3px 8px rgba(13,18,48,.3); cursor:grab; }
+  .rng::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#fff; border:3px solid var(--blue); box-shadow:0 3px 8px rgba(13,18,48,.3); cursor:grab; }
+  .rng::-moz-range-track { background:transparent; }
+  .rng:focus-visible { outline:3px solid var(--blue); outline-offset:5px; }
+  .hint { color:var(--muted); font-size:.8rem; display:flex; justify-content:space-between; gap:10px; }
+  .field.out .hint { color:#B26A00; font-weight:600; }
+  .field.out .num { border-color:var(--amber); background:#FFF8EA; }
+  .legend-note { margin:6px 0 0; color:var(--muted); font-size:.82rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .sw { display:inline-block; width:22px; height:8px; border-radius:99px; vertical-align:middle; }
+
+  /* Readout */
+  .readout {
+    position:relative; background:linear-gradient(165deg, var(--night-2) 0%, var(--night) 70%); color:var(--on-night);
+    border-radius:28px; padding:30px 30px 26px; overflow:hidden;
+    box-shadow:0 40px 70px -40px rgba(13,18,48,.8);
+  }
+  .readout .kicker { color:var(--on-night-muted); font-size:.95rem; margin:0 0 8px; }
+  .verdict {
+    font:800 clamp(2.6rem,6vw,4.2rem)/1 var(--display); letter-spacing:-.04em; margin:0; color:var(--vc,#fff);
+    transition:color .4s;
+  }
+  .verdict.bump { animation:bump .45s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes bump { 0% { transform:translateY(8px); opacity:.2; } 100% { transform:none; opacity:1; } }
+  .conf { margin:10px 0 24px; color:var(--on-night); font-size:1.02rem; }
+  .conf b { font-family:var(--mono); font-weight:700; }
+
+  .pbar { position:relative; display:flex; height:22px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.07); }
+  .seg { height:100%; width:0; background:var(--c); transition:width .6s cubic-bezier(.3,.8,.3,1); }
+  .seg + .seg { border-left:2px solid var(--night); }
+  .tick { position:absolute; top:0; bottom:0; width:3px; margin-left:-1px; background:#fff; border-radius:2px; box-shadow:0 0 0 1px var(--night); }
+  .plist { display:flex; flex-wrap:wrap; gap:8px 22px; margin:12px 0 0; padding:0; list-style:none; }
+  .plist li { display:flex; align-items:center; gap:8px; font-size:.95rem; }
+  .plist b { font:700 .95rem var(--mono); }
+  .tick-note { margin:8px 0 0; color:var(--on-night-muted); font-size:.82rem; }
+
+  .warns { margin:18px 0 0; display:grid; gap:8px; }
+  .warn { background:rgba(245,165,36,.14); border:1px solid rgba(245,165,36,.5); color:#FFD9A0; border-radius:12px; padding:10px 14px; font-size:.88rem; }
+  .oops { background:rgba(255,77,109,.12); border:1px solid rgba(255,77,109,.45); color:#FFC2CD; border-radius:12px; padding:10px 14px; font-size:.92rem; }
+  .readout.stale .verdict, .readout.stale .pbar { opacity:.4; }
+
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:28px; margin-top:30px; padding-top:26px; border-top:1px solid rgba(255,255,255,.1); }
+  .two h3 { margin:0 0 4px; font:700 1.05rem var(--display); letter-spacing:-.01em; }
+  .two .cap { margin:0 0 14px; color:var(--on-night-muted); font-size:.84rem; }
+  .drv { margin:0 0 12px; }
+  .drv-row { display:flex; justify-content:space-between; gap:10px; font-size:.88rem; margin-bottom:5px; }
+  .drv-row span:last-child { font-family:var(--mono); color:var(--on-night-muted); font-size:.82rem; white-space:nowrap; }
+  .drv-track { position:relative; height:8px; border-radius:99px; background:rgba(255,255,255,.07); }
+  .drv-track::after { content:""; position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:rgba(255,255,255,.35); }
+  .drv-bar { position:absolute; top:0; bottom:0; border-radius:99px; transition:left .5s, width .5s, background .3s; }
+  .drv-d { font-family:var(--mono); font-weight:700; }
+  .radar { display:block; width:100%; height:auto; max-width:340px; margin:0 auto; overflow:visible; }
+  .rlegend { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:center; margin-top:6px; font-size:.82rem; color:var(--on-night-muted); }
+  .rlegend span { display:inline-flex; align-items:center; gap:6px; }
+  .rlegend i { width:16px; height:0; border-top:2px solid var(--c); display:inline-block; }
+  .rlegend i.dash { border-top-style:dashed; }
+  .disc { margin:26px 0 0; color:var(--on-night-muted); font-size:.82rem; }
+
+  /* Model card */
+  .model { margin:64px 0 0; }
+  .model h2 { margin:0 0 6px; font:800 clamp(1.9rem,3.6vw,2.7rem)/1.05 var(--display); letter-spacing:-.035em; }
+  .model > p { margin:0 0 26px; color:var(--ink-2); max-width:62ch; }
+  .mgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:20px; }
+  .mcard { padding:24px; }
+  .mcard h3 { margin:0 0 14px; font:700 1.1rem var(--display); }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; margin:0; }
+  .stat dt { color:var(--muted); font-size:.84rem; }
+  .stat dd { margin:2px 0 0; font:700 1.6rem/1.1 var(--mono); letter-spacing:-.04em; color:var(--ink); }
+  .rec { margin-top:20px; display:grid; gap:9px; }
+  .rec h4 { margin:0 0 2px; font-size:.88rem; color:var(--muted); font-weight:600; }
+  .rec-row { display:grid; grid-template-columns:78px 1fr 44px; align-items:center; gap:10px; font-size:.88rem; }
+  .rec-row .bar { height:9px; border-radius:99px; background:#E7EBF6; overflow:hidden; }
+  .rec-row .bar i { display:block; height:100%; border-radius:99px; background:var(--c); }
+  .rec-row b { font-family:var(--mono); text-align:right; }
+  .note { margin:16px 0 0; color:var(--muted); font-size:.86rem; }
+  .cm { display:grid; gap:6px; margin-top:4px; }
+  .cm-row { display:grid; gap:6px; align-items:stretch; }
+  .cm-cell { border-radius:12px; padding:12px 6px; text-align:center; font:700 1.15rem var(--mono); color:var(--ink); background:rgba(58,43,255,var(--a,0)); border:1px solid var(--line); }
+  .cm-cell small { display:block; font:500 .7rem var(--body); color:inherit; opacity:.75; margin-top:2px; }
+  .cm-cell.on { color:#fff; }
+  .cm-lab { font-size:.8rem; color:var(--muted); display:flex; align-items:center; }
+  .cm-top { justify-content:center; text-align:center; }
+  .cm-axis { margin:10px 0 0; color:var(--muted); font-size:.8rem; }
+  .imp { display:grid; gap:11px; }
+  .imp-row { display:grid; grid-template-columns:132px 1fr; gap:12px; align-items:center; font-size:.9rem; }
+  .imp-row .bar { height:12px; border-radius:99px; background:#E7EBF6; overflow:hidden; }
+  .imp-row .bar i { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#7C6CFF,var(--blue)); }
+
+  footer { margin:60px 0 44px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:.88rem; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+
+  .panel[hidden] { display:none; }
+  noscript p { padding:20px; background:#fff; border-radius:14px; }
+
+  @media (max-width:980px) {
+    .hero { grid-template-columns:1fr; gap:28px; }
+    .console { grid-template-columns:1fr; }
+    .lede { min-height:0; }
+  }
+  @media (max-width:560px) {
+    .wrap { padding:0 16px; }
+    .tab { padding:12px 14px; font-size:.92rem; gap:8px; }
+    .readout { padding:24px 20px; }
+    .form { padding:22px 18px; }
+    .imp-row { grid-template-columns:100px 1fr; }
+    .scope-read { left:18px; top:16px; }
+    .scope-cap { display:none; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { transition-duration:.01ms !important; animation-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#0B0F26"/><path d="M6 36h12l5-16 8 30 7-22 4 8h16" fill="none" stroke="#7CF5E1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Two Pulses
+    </div>
+    <div class="by">Built by Ahmed Shahzad</div>
+  </div>
+
+  <header class="hero">
+    <div>
+      <h1>One heartbeat. One pulsar. One pipeline.</h1>
+      <p class="lede" id="lede"></p>
+      <div class="tabs" role="tablist" aria-label="Choose a model" id="tabs">
+        <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="scope" id="scope">
+      <canvas id="scope-canvas" aria-hidden="true"></canvas>
+      <div class="scope-read" aria-live="polite">
+        <div class="scope-big" id="scope-big">-</div>
+        <div class="scope-sub" id="scope-sub"></div>
+      </div>
+      <div class="scope-cap" id="scope-cap"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="panels"></div>
+    <noscript><p>This page needs JavaScript to run the live predictions.</p></noscript>
+  </main>
+
+  <footer>
+    <span id="foot-source"></span>
+    <span>Models: scikit-learn. Backend: Flask. Notebooks 01 to 03 rebuild everything.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const DATA = {{ datasets|tojson }};
+  const KEYS = Object.keys(DATA);
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COLORS = { 'low risk':'#12B886', 'mid risk':'#F5A524', 'high risk':'#FF4D6D', 'not pulsar':'#9AA3C7', 'pulsar':'#8C7BFF' };
+  const TRACE  = { 'low risk':'#4CF0B4', 'mid risk':'#FFC15A', 'high risk':'#FF7C93', 'not pulsar':'#8F9AC4', 'pulsar':'#A99BFF' };
+  const ICONS = {
+    maternal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h4l2.5-6 4 11 2.5-8 1.5 3H22"/></svg>',
+    pulsar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v5M12 17v5M6.5 6.5l2 2M15.5 15.5l2 2M2 12h5M17 12h5"/></svg>'
+  };
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const sv = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); return e; };
+  const decimals = step => step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
+  const fmt = (v, step) => Number(v).toFixed(decimals(step));
+  const pct = (p, d) => (p * 100).toFixed(d || 0) + '%';
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  const S = { key: KEYS[0], ui: {}, results: {}, req: 0, timer: null };
+
+  /* ---------- Slider geometry ---------- */
+  function bounds(f) {
+    const span = f.max - f.min, core = f.p95 - f.p05;
+    let lo = f.min, hi = f.max;
+    if (core > 0) {
+      lo = Math.max(f.min - 0.05 * span, f.p05 - core);
+      hi = Math.min(f.max + 0.05 * span, f.p95 + core);
+    }
+    lo = Math.min(lo, f.default); hi = Math.max(hi, f.default);
+    if (lo < 0 && f.min >= 0) lo = 0;
+    if (hi <= lo) hi = lo + 1;
+    return [lo, hi];
+  }
+  function trackGradient(f, lo, hi) {
+    const p = v => clamp((v - lo) / (hi - lo) * 100, 0, 100).toFixed(2);
+    const a = p(f.min), b = p(f.p05), c = p(f.p95), d = p(f.max);
+    return 'linear-gradient(to right,#DDE2F0 0 ' + a + '%,#C6C2FF ' + a + '% ' + b + '%,#8E86FF ' + b + '% ' + c + '%,#C6C2FF ' + c + '% ' + d + '%,#DDE2F0 ' + d + '% 100%)';
+  }
+
+  /* ---------- Build a panel per dataset ---------- */
+  function buildPanel(key) {
+    const cfg = DATA[key];
+    const panel = el('section', 'panel'); panel.id = 'panel-' + key; panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', 'tab-' + key); panel.hidden = key !== S.key;
+    const ui = S.ui[key] = { inputs: {}, chips: [] };
+
+    const grid = el('div', 'console');
+    const form = el('form', 'card form'); form.noValidate = true;
+    form.addEventListener('submit', e => e.preventDefault());
+    form.appendChild(el('h2', null, 'Set the inputs'));
+    form.appendChild(el('p', 'sub', 'Drag a slider or type a number. The result updates as you go.'));
+
+    const chips = el('div', 'chips');
+    chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Start from a real example');
+    const mkChip = (label, color, values) => {
+      const b = el('button', 'chip'); b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+      const d = el('span', 'dot'); if (color) d.style.setProperty('--c', color);
+      b.append(d, document.createTextNode(label));
+      b.addEventListener('click', () => {
+        ui.chips.forEach(c => c.setAttribute('aria-pressed', c === b ? 'true' : 'false'));
+        for (const n in values) setValue(key, n, values[n]);
+        run(key);
+      });
+      ui.chips.push(b); chips.appendChild(b);
+    };
+    cfg.examples.forEach(ex => mkChip('Real example: ' + ex.display, COLORS[ex.name], ex.values));
+    const typical = {}; cfg.features.forEach(f => { typical[f.name] = f.default; });
+    mkChip('Typical values', null, typical);
+    form.appendChild(chips);
+
+    let lastGroup = null;
+    cfg.features.forEach(f => {
+      if (f.group && f.group !== lastGroup) { form.appendChild(el('div', 'group-h', f.group)); lastGroup = f.group; }
+      const [lo, hi] = bounds(f);
+      const wrap = el('div', 'field');
+      const head = el('div', 'field-head');
+      const lab = el('label'); lab.htmlFor = key + '-' + f.name; lab.textContent = f.label;
+      if (f.unit) lab.appendChild(el('span', 'unit', f.unit));
+      const num = el('input', 'num'); num.type = 'number'; num.step = 'any'; num.id = key + '-' + f.name; num.name = f.name;
+      num.value = f.default; num.inputMode = 'decimal';
+      head.append(lab, num);
+
+      const rng = el('input', 'rng'); rng.type = 'range'; rng.min = lo; rng.max = hi; rng.step = 'any'; rng.value = f.default;
+      rng.setAttribute('aria-label', f.label + ' slider'); rng.style.setProperty('--track', trackGradient(f, lo, hi));
+      const hint = el('div', 'hint');
+      const h1 = el('span', null, f.help); const h2 = el('span', null);
+      hint.append(h1, h2);
+      wrap.append(head, rng, hint);
+      form.appendChild(wrap);
+
+      rng.addEventListener('input', () => { num.value = fmt(rng.value, f.step); touch(key, f); });
+      num.addEventListener('input', () => { if (num.value !== '') rng.value = clamp(parseFloat(num.value), lo, hi); touch(key, f); });
+      ui.inputs[f.name] = { num, rng, wrap, h2, f, lo, hi };
+      updateHint(ui.inputs[f.name]);
+    });
+
+    const ln = el('p', 'legend-note');
+    const s1 = el('span', 'sw'); s1.style.background = '#8E86FF';
+    const s2 = el('span', 'sw'); s2.style.background = '#C6C2FF';
+    ln.append(s1, document.createTextNode('typical values (middle 90%)'), s2, document.createTextNode('anything seen in training'));
+    form.appendChild(ln);
+    grid.appendChild(form);
+
+    /* readout */
+    const ro = el('div', 'readout'); ro.setAttribute('aria-live', 'polite');
+    ro.appendChild(el('p', 'kicker', cfg.target_label));
+    const verdict = el('h2', 'verdict', '...');
+    const conf = el('p', 'conf');
+    const confPre = document.createTextNode('Reading the signal'), confB = el('b'), confPost = document.createTextNode('');
+    conf.append(confPre, confB, confPost);
+    const pbar = el('div', 'pbar');
+    cfg.classes.forEach(c => { const s = el('div', 'seg'); s.style.setProperty('--c', COLORS[c.label]); pbar.appendChild(s); });
+    let tick = null;
+    if (cfg.threshold != null) { tick = el('div', 'tick'); tick.style.left = ((1 - cfg.threshold) * 100) + '%'; pbar.appendChild(tick); }
+    const plist = el('ul', 'plist');
+    const pvals = cfg.classes.map(c => {
+      const li = el('li'); const d = el('span', 'dot'); d.style.setProperty('--c', COLORS[c.label]);
+      const b = el('b', null, '0%'); li.append(d, document.createTextNode(c.display + ' '), b); plist.appendChild(li); return b;
+    });
+    const msgs = el('div', 'warns');
+    ro.append(verdict, conf, pbar, plist);
+    if (tick) ro.appendChild(el('p', 'tick-note', 'White line: the decision threshold (' + pct(cfg.threshold) + ' pulsar probability). The violet part of the bar must reach it for a pulsar verdict.'));
+    ro.appendChild(msgs);
+
+    const two = el('div', 'two');
+    const dBox = el('div'); const dH = el('h3', null, 'What moves the result'); const dCap = el('p', 'cap', '');
+    const dList = el('div'); dBox.append(dH, dCap, dList);
+    const rBox = el('div'); rBox.append(el('h3', null, 'Your profile against typical cases'),
+      el('p', 'cap', 'Each spoke shows where your value ranks among all training examples, from the lowest (centre) to the highest (rim).'));
+    const radarHost = el('div'); const rLegend = el('div', 'rlegend'); rBox.append(radarHost, rLegend);
+    two.append(dBox, rBox); ro.appendChild(two);
+    ro.appendChild(el('p', 'disc', cfg.disclaimer));
+    grid.appendChild(ro);
+    panel.appendChild(grid);
+    panel.appendChild(buildModel(key));
+
+    Object.assign(ui, { ro, verdict, conf, confPre, confB, confPost, pbar, pvals, msgs, dH, dCap, dList, radarHost, rLegend });
+    return panel;
+  }
+
+  function updateHint(inp) {
+    const v = parseFloat(inp.num.value), f = inp.f;
+    const out = isFinite(v) && (v < f.min || v > f.max);
+    inp.wrap.classList.toggle('out', out);
+    inp.h2.textContent = out ? 'Outside training range' : 'Trained on ' + fmt(f.min, f.step) + ' to ' + fmt(f.max, f.step);
+  }
+  function touch(key, f) {
+    updateHint(S.ui[key].inputs[f.name]);
+    S.ui[key].chips.forEach(c => c.setAttribute('aria-pressed', 'false'));
+    schedule(key);
+  }
+  function setValue(key, name, v) {
+    const inp = S.ui[key].inputs[name]; if (!inp) return;
+    inp.num.value = v; inp.rng.value = clamp(v, inp.lo, inp.hi); updateHint(inp);
+  }
+
+  /* ---------- Model card ---------- */
+  function buildModel(key) {
+    const cfg = DATA[key], m = cfg.metrics;
+    const sec = el('section', 'model');
+    sec.appendChild(el('h2', null, 'How far can you trust it?'));
+    const intro = key === 'maternal'
+      ? 'Tested on ' + m.n_test + ' women the model had never seen. The ' + m.model_name + ' won a cross-validated comparison on the training data only.'
+      : 'Tested on ' + m.n_test.toLocaleString() + ' candidates the model had never seen (' + m.n_test_pulsars + ' real pulsars). The ' + m.model_name + ' won a cross-validated comparison on the training data only.';
+    sec.appendChild(el('p', null, intro));
+    const grid = el('div', 'mgrid');
+
+    /* stats */
+    const c1 = el('div', 'card mcard'); c1.appendChild(el('h3', null, 'Scores on unseen data'));
+    const dl = el('dl', 'stats');
+    const stats = key === 'maternal'
+      ? [['Accuracy', pct(m.accuracy)], ['Macro F1', m.macro_f1.toFixed(2)], ['High-risk recall', pct(m.high_risk_recall)], ['Cross-val macro F1', m.cv_macro_f1.toFixed(2)]]
+      : [['Precision', pct(m.precision, 1)], ['Recall', pct(m.recall, 1)], ['F1', m.f1.toFixed(3)], ['PR-AUC', m.pr_auc.toFixed(3)], ['ROC-AUC', m.roc_auc.toFixed(3)], ['Cross-val PR-AUC', m.cv_pr_auc.toFixed(3)]];
+    stats.forEach(([k, v]) => { const d = el('div', 'stat'); d.append(el('dt', null, k), el('dd', null, v)); dl.appendChild(d); });
+    c1.appendChild(dl);
+    if (key === 'maternal' && m.per_class) {
+      const rec = el('div', 'rec'); rec.appendChild(el('h4', null, 'How many true cases the model catches (recall)'));
+      cfg.classes.forEach(c => {
+        const r = m.per_class[c.label].recall;
+        const row = el('div', 'rec-row'); row.style.setProperty('--c', COLORS[c.label]);
+        const bar = el('div', 'bar'); const i = el('i'); i.style.width = (r * 100) + '%'; bar.appendChild(i);
+        row.append(el('span', null, c.display), bar, el('b', null, pct(r)));
+        rec.appendChild(row);
+      });
+      c1.appendChild(rec);
+      c1.appendChild(el('p', 'note', 'Mid risk is the hardest class: its vitals overlap with both neighbours. Low-versus-high mix-ups are rare.'));
+    } else {
+      c1.appendChild(el('p', 'note', 'Threshold tuned on training data: ' + pct(m.threshold) + ' pulsar probability. Accuracy is deliberately not headlined: only about 9% of candidates are pulsars, so "always say no" would already score 91%.'));
+    }
+    grid.appendChild(c1);
+
+    /* confusion matrix */
+    const c2 = el('div', 'card mcard'); c2.appendChild(el('h3', null, 'Where it gets confused'));
+    const cm = cfg.confusion_matrix, n = cm.length;
+    const wrap = el('div', 'cm');
+    const cols = '70px repeat(' + n + ', 1fr)';
+    const top = el('div', 'cm-row'); top.style.gridTemplateColumns = cols;
+    top.appendChild(el('span'));
+    cfg.classes.forEach(c => top.appendChild(el('span', 'cm-lab cm-top', c.display)));
+    wrap.appendChild(top);
+    cm.forEach((row, i) => {
+      const r = el('div', 'cm-row'); r.style.gridTemplateColumns = cols;
+      r.appendChild(el('span', 'cm-lab', cfg.classes[i].display));
+      const tot = row.reduce((a, b) => a + b, 0) || 1;
+      row.forEach((v, j) => {
+        const share = v / tot;
+        const cell = el('div', 'cm-cell' + (share > 0.45 ? ' on' : '')); cell.style.setProperty('--a', (0.06 + share * 0.94).toFixed(2));
+        cell.textContent = v.toLocaleString(); cell.appendChild(el('small', null, pct(share) + ' of row'));
+        if (i === j) cell.style.borderColor = 'var(--blue)';
+        r.appendChild(cell);
+      });
+      wrap.appendChild(r);
+    });
+    c2.appendChild(wrap);
+    c2.appendChild(el('p', 'cm-axis', 'Rows are the true class, columns are what the model said. The diagonal (outlined) is correct.'));
+    grid.appendChild(c2);
+
+    /* importance */
+    const c3 = el('div', 'card mcard'); c3.appendChild(el('h3', null, 'What the model relies on'));
+    const imp = el('div', 'imp'); const mx = Math.max(...cfg.importance.map(i => i.value), 1e-9);
+    cfg.importance.forEach(i => {
+      const row = el('div', 'imp-row'); const bar = el('div', 'bar'); const b = el('i');
+      b.style.width = Math.max(i.value / mx * 100, 1.5) + '%'; bar.appendChild(b);
+      row.append(el('span', null, i.label), bar); imp.appendChild(row);
+    });
+    c3.appendChild(imp);
+    c3.appendChild(el('p', 'note', 'Permutation importance on the test set: how much the score drops when a feature is shuffled. A bar near zero means the model does not need that feature.'));
+    grid.appendChild(c3);
+
+    sec.appendChild(grid);
+    return sec;
+  }
+
+  /* ---------- Predict ---------- */
+  function schedule(key) { clearTimeout(S.timer); S.timer = setTimeout(() => run(key), 110); }
+  async function run(key) {
+    const ui = S.ui[key], payload = {};
+    DATA[key].features.forEach(f => { payload[f.name] = ui.inputs[f.name].num.value; });
+    const id = ++S.req;
+    try {
+      const res = await fetch('/api/predict/' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (id !== S.req) return;
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      S.results[key] = data; render(key, data);
+    } catch (err) {
+      if (id !== S.req) return;
+      showError(key, err.message);
+    }
+  }
+
+  const tweens = new WeakMap();
+  function tween(node, to, fmtFn) {
+    const from = parseFloat(node.dataset.v || '0'); node.dataset.v = to;
+    const prev = tweens.get(node); if (prev) cancelAnimationFrame(prev);
+    if (REDUCED || from === to) { node.textContent = fmtFn(to); return; }
+    const t0 = performance.now(), dur = 450;
+    const tick = now => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      node.textContent = fmtFn(from + (to - from) * e);
+      if (p < 1) tweens.set(node, requestAnimationFrame(tick));
+    };
+    tweens.set(node, requestAnimationFrame(tick));
+  }
+
+  function showError(key, msg) {
+    const ui = S.ui[key]; ui.ro.classList.add('stale');
+    ui.msgs.replaceChildren(el('div', 'oops', msg));
+  }
+
+  function render(key, d) {
+    const cfg = DATA[key], ui = S.ui[key];
+    ui.ro.classList.remove('stale');
+    const changed = ui.verdict.textContent !== d.display;
+    ui.verdict.textContent = d.display; ui.verdict.style.setProperty('--vc', TRACE[d.prediction]);
+    if (changed) { ui.verdict.classList.remove('bump'); void ui.verdict.offsetWidth; ui.verdict.classList.add('bump'); }
+
+    if (cfg.task === 'binary') {
+      const pp = d.probabilities.find(p => p.label === cfg.positive_label).p;
+      ui.confPre.nodeValue = 'Estimated chance this is a real pulsar: '; ui.confPost.nodeValue = '';
+      tween(ui.confB, pp * 100, v => v.toFixed(1) + '%');
+    } else {
+      ui.confPre.nodeValue = 'The model is '; ui.confPost.nodeValue = ' confident in this level.';
+      tween(ui.confB, d.confidence * 100, v => Math.round(v) + '%');
+    }
+
+    const segs = ui.pbar.querySelectorAll('.seg');
+    d.probabilities.forEach((p, i) => { segs[i].style.width = (p.p * 100) + '%'; tween(ui.pvals[i], p.p * 100, v => v.toFixed(cfg.task === 'binary' ? 1 : 0) + '%'); });
+
+    ui.msgs.replaceChildren(...d.warnings.map(w => el('div', 'warn', w)));
+
+    /* drivers */
+    ui.dH.textContent = 'What moves the chance of ' + d.focus_display.toLowerCase();
+    ui.dCap.textContent = 'Each bar compares your value with a typical one: right pushes the chance up, left pushes it down.';
+    const top = d.drivers.slice(0, 6), mx = Math.max(0.05, ...top.map(x => Math.abs(x.delta)));
+    const fcol = TRACE[d.focus];
+    ui.dList.replaceChildren(...top.map(x => {
+      const row = el('div', 'drv'); const r = el('div', 'drv-row');
+      const f = cfg.features.find(ft => ft.name === x.name);
+      r.append(el('span', null, x.label), el('span', null, fmt(x.value, f.step) + (x.unit ? ' ' + x.unit : '')));
+      const tr = el('div', 'drv-track'); const bar = el('div', 'drv-bar');
+      const w = Math.abs(x.delta) / mx * 50;
+      bar.style.width = w + '%'; bar.style.left = (x.delta >= 0 ? 50 : 50 - w) + '%'; bar.style.background = x.delta >= 0 ? fcol : '#6B7399';
+      tr.appendChild(bar);
+      const pts = Math.round(x.delta * 100);
+      const dl = el('div', 'drv-row'); dl.style.margin = '5px 0 0';
+      const dd = el('span', 'drv-d', (pts > 0 ? '+' : '') + pts + ' points'); dd.style.color = x.delta >= 0 ? fcol : '#9AA3C7';
+      dl.append(dd, el('span'));
+      row.append(r, tr, dl); return row;
+    }));
+
+    drawRadar(ui, d.profile, key);
+
+    if (key === S.key) updateScope(key);
+  }
+
+  function drawRadar(ui, prof, key) {
+    const n = prof.axes.length, cx = 150, cy = 150, R = 96;
+    const svg = sv('svg', { viewBox: '-30 -10 360 320', class: 'radar', role: 'img', 'aria-label': 'Radar chart comparing your inputs with typical cases' });
+    const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+    const pt = (i, v) => [cx + Math.cos(ang(i)) * R * v / 100, cy + Math.sin(ang(i)) * R * v / 100];
+    [25, 50, 75, 100].forEach(r => {
+      svg.appendChild(sv('polygon', { points: prof.axes.map((_, i) => pt(i, r).join(',')).join(' '), fill: 'none', stroke: 'rgba(255,255,255,.12)', 'stroke-width': 1 }));
+    });
+    prof.axes.forEach((a, i) => {
+      const [x, y] = pt(i, 100);
+      svg.appendChild(sv('line', { x1: cx, y1: cy, x2: x, y2: y, stroke: 'rgba(255,255,255,.12)', 'stroke-width': 1 }));
+      const [lx, ly] = pt(i, 122);
+      const t = sv('text', { x: lx, y: ly, fill: '#A3ABD0', 'font-size': 11, 'text-anchor': Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end', 'dominant-baseline': 'middle', 'font-family': 'Instrument Sans, sans-serif' });
+      t.textContent = a; svg.appendChild(t);
+    });
+    const poly = (vals, attrs) => sv('polygon', Object.assign({ points: vals.map((v, i) => pt(i, v).join(',')).join(' ') }, attrs));
+    const legend = [];
+    Object.entries(prof.refs).forEach(([cls, vals]) => {
+      const c = TRACE[cls];
+      svg.appendChild(poly(vals, { fill: 'none', stroke: c, 'stroke-width': 1.6, 'stroke-dasharray': '4 3', 'stroke-linejoin': 'round', opacity: .9 }));
+      const cn = DATA[key].classes.find(k => k.label === cls).display;
+      legend.push([c, 'Typical ' + cn.toLowerCase(), true]);
+    });
+    svg.appendChild(poly(prof.you, { fill: 'rgba(124,245,225,.2)', stroke: '#7CF5E1', 'stroke-width': 2.4, 'stroke-linejoin': 'round' }));
+    prof.you.forEach((v, i) => { const [x, y] = pt(i, v); svg.appendChild(sv('circle', { cx: x, cy: y, r: 3.4, fill: '#7CF5E1' })); });
+    legend.push(['#7CF5E1', 'This input', false]);
+    ui.radarHost.replaceChildren(svg);
+    ui.rLegend.replaceChildren(...legend.map(([c, t, dash]) => { const s = el('span'); const i = el('i', dash ? 'dash' : ''); i.style.setProperty('--c', c); s.append(i, document.createTextNode(t)); return s; }));
+  }
+
+  /* ---------- Tabs ---------- */
+  const tabsEl = document.getElementById('tabs'), ind = document.getElementById('tab-ind');
+  ind.style.width = 'calc(' + (100 / KEYS.length) + '% - ' + (10 / KEYS.length) + 'px)';
+  KEYS.forEach((k, i) => {
+    const b = el('button', 'tab'); b.type = 'button'; b.id = 'tab-' + k; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-controls', 'panel-' + k); b.setAttribute('aria-selected', k === S.key ? 'true' : 'false');
+    b.tabIndex = k === S.key ? 0 : -1;
+    b.innerHTML = ICONS[k]; b.appendChild(document.createTextNode(DATA[k].title));
+    b.addEventListener('click', () => selectTab(k, false));
+    b.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const nk = KEYS[(i + (e.key === 'ArrowRight' ? 1 : KEYS.length - 1)) % KEYS.length];
+        selectTab(nk, true);
+      }
+    });
+    tabsEl.appendChild(b);
+  });
+  const panelsEl = document.getElementById('panels');
+  KEYS.forEach(k => panelsEl.appendChild(buildPanel(k)));
+
+  function selectTab(k, focus) {
+    S.key = k;
+    KEYS.forEach((kk, i) => {
+      const b = document.getElementById('tab-' + kk), on = kk === k;
+      b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1;
+      document.getElementById('panel-' + kk).hidden = !on;
+      if (on) { ind.style.transform = 'translateX(' + (i * 100) + '%)'; if (focus) b.focus(); }
+    });
+    document.getElementById('lede').textContent = DATA[k].description;
+    document.getElementById('foot-source').textContent = 'Data: ' + DATA[k].source;
+    scope.reset(k);
+    if (S.results[k]) updateScope(k); else { primeScope(k); run(k); }
+  }
+
+  /* ---------- The scope ---------- */
+  const scope = (() => {
+    const canvas = document.getElementById('scope-canvas'), ctx = canvas.getContext('2d');
+    const box = document.getElementById('scope');
+    let W = 600, H = 380, buf = new Float32Array(600).fill(NaN), head = 0, carry = 0, phase = 0, tAcc = 0, last = 0, mode = KEYS[0];
+    const P = { bpm: 76, amp: 1, p: 0.5, rgb: [76, 240, 180] };
+    const T = { bpm: 76, amp: 1, p: 0.5, rgb: [76, 240, 180] };
+    const PX_PER_SEC = 150, PULSE_PERIOD = 1.15;
+    const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const g = (x, c, w) => Math.exp(-Math.pow((x - c) / w, 2));
+    const ecg = ph => 0.11 * g(ph, .17, .04) - 0.12 * g(ph, .285, .011) + 1.0 * g(ph, .30, .011) - 0.22 * g(ph, .318, .013) + 0.26 * g(ph, .55, .06);
+    const nz = t => (Math.sin(t * 91 + 1.3) + 0.8 * Math.sin(t * 47.7 + .4) + 0.5 * Math.sin(t * 173 + 2.1) + 0.35 * Math.sin(t * 263 + .7) + 0.25 * Math.sin(t * 331 + 3.3)) / 2.9;
+
+    function sample() {
+      if (mode === 'maternal') {
+        phase += (1 / PX_PER_SEC) * (P.bpm / 60);
+        const ph = phase % 1;
+        return ecg(ph) * P.amp + 0.012 * nz(tAcc * 0.6) + 0.02 * Math.sin(tAcc * 1.3);
+      }
+      phase += (1 / PX_PER_SEC) / PULSE_PERIOD;
+      const ph = phase % 1, q = P.p;
+      const amp = 0.07 + 0.93 * Math.pow(q, 1.15), w = 0.05 - 0.028 * q;
+      const noise = nz(tAcc * 40) * (0.05 + 0.5 * (1 - q) * (1 - q * 0.4));
+      return amp * g(ph, 0.5, w) + noise;
+    }
+    function push(n) {
+      for (let i = 0; i < n; i++) { head = (head + 1) % buf.length; tAcc += 1 / PX_PER_SEC; buf[head] = sample(); }
+    }
+    function layout() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2), r = box.getBoundingClientRect();
+      W = Math.max(200, Math.floor(r.width)); H = Math.max(150, Math.floor(r.height));
+      canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buf = new Float32Array(W).fill(NaN); head = 0;
+      if (REDUCED) { Object.assign(P, T); push(W); draw(); }
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#0B0F26'; ctx.fillRect(0, 0, W, H);
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.045)'; ctx.beginPath();
+      for (let x = 0; x < W; x += 40) { ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); }
+      for (let y = 0; y < H; y += 40) { ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); }
+      ctx.stroke();
+      const base = mode === 'maternal' ? H * 0.7 : H * 0.8, scale = mode === 'maternal' ? H * 0.5 : H * 0.6;
+      const N = buf.length, B = 16, rgb = P.rgb.map(Math.round), r = rgb[0], gg = rgb[1], b = rgb[2];
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      for (let band = B - 1; band >= 0; band--) {
+        const a = Math.pow(1 - (band + 0.5) / B, 1.7);
+        ctx.strokeStyle = 'rgba(' + r + ',' + gg + ',' + b + ',' + a.toFixed(3) + ')'; ctx.lineWidth = band < 2 ? 2.6 : 2;
+        ctx.shadowColor = 'rgba(' + r + ',' + gg + ',' + b + ',' + (a * 0.9).toFixed(3) + ')'; ctx.shadowBlur = band < 5 ? 14 : 0;
+        ctx.beginPath(); let started = false;
+        const k0 = Math.floor(band * N / B), k1 = Math.floor((band + 1) * N / B) + 1;
+        for (let k = k0; k <= k1 && k < N; k++) {
+          const i = (head - k + N) % N, v = buf[i];
+          if (Number.isNaN(v)) { started = false; continue; }
+          const y = clamp(base - v * scale, 6, H - 6);
+          const wrapped = k > k0 && Math.abs(i - ((head - k + 1 + N) % N)) > 2;
+          if (!started || wrapped) { ctx.moveTo(i, y); started = true; } else ctx.lineTo(i, y);
+        }
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      const hv = buf[head];
+      if (!Number.isNaN(hv)) {
+        const y = clamp(base - hv * scale, 6, H - 6);
+        ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgb(' + r + ',' + gg + ',' + b + ')'; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(head, y, 3.6, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+      }
+    }
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now;
+      const k = 1 - Math.exp(-dt * 6);
+      P.bpm += (T.bpm - P.bpm) * k; P.amp += (T.amp - P.amp) * k; P.p += (T.p - P.p) * k;
+      for (let i = 0; i < 3; i++) P.rgb[i] += (T.rgb[i] - P.rgb[i]) * k;
+      carry += PX_PER_SEC * dt; const n = Math.floor(carry); carry -= n; push(n);
+      draw();
+    }
+    function set(next) {
+      if (next.rgb) T.rgb = next.rgb;
+      if (next.bpm != null) T.bpm = next.bpm;
+      if (next.p != null) T.p = next.p;
+      if (REDUCED) { Object.assign(P, T); buf.fill(NaN); push(W); draw(); }
+    }
+    function reset(k) {
+      mode = k; buf.fill(NaN); phase = 0; carry = 0;
+      if (REDUCED) { Object.assign(P, T); push(W); draw(); }
+    }
+    function start() {
+      layout();
+      if ('ResizeObserver' in window) new ResizeObserver(() => layout()).observe(box); else window.addEventListener('resize', layout);
+      if (!REDUCED) requestAnimationFrame(frame);
+    }
+    return { start, set, reset, hex };
+  })();
+
+  const CAP = {
+    maternal: 'A synthetic ECG drawn at the heart rate you enter. The colour follows the predicted risk.',
+    pulsar: 'An illustrative pulse train, not real telescope data: taller and cleaner as the pulsar probability rises.'
+  };
+  function setScopeText(big, small, sub) {
+    const b = document.getElementById('scope-big'); b.textContent = big;
+    if (small) b.appendChild(el('small', null, small));
+    document.getElementById('scope-sub').textContent = sub;
+  }
+  function primeScope(k) {
+    const cfg = DATA[k];
+    document.getElementById('scope-cap').textContent = CAP[k];
+    if (k === 'maternal') {
+      const hr = cfg.features.find(f => f.name === 'HeartRate').default;
+      scope.set({ bpm: hr, rgb: scope.hex(TRACE['low risk']) });
+      setScopeText(String(hr), 'bpm', 'Waiting for the first reading.');
+    } else {
+      scope.set({ p: 0.5, rgb: scope.hex(TRACE['not pulsar']) });
+      setScopeText('...', '', 'Waiting for the first reading.');
+    }
+  }
+  function updateScope(k) {
+    const d = S.results[k], cfg = DATA[k];
+    document.getElementById('scope').style.setProperty('--trace', TRACE[d.prediction]);
+    document.getElementById('scope-cap').textContent = CAP[k];
+    if (k === 'maternal') {
+      const hr = parseFloat(S.ui[k].inputs.HeartRate.num.value);
+      scope.set({ bpm: clamp(isFinite(hr) ? hr : 76, 30, 200), rgb: scope.hex(TRACE[d.prediction]) });
+      setScopeText(isFinite(hr) ? String(Math.round(hr)) : '-', 'bpm', d.display + ' predicted for this set of vitals.');
+    } else {
+      const pp = d.probabilities.find(p => p.label === cfg.positive_label).p;
+      scope.set({ p: pp, rgb: scope.hex(TRACE[d.prediction]) });
+      setScopeText((pp * 100).toFixed(1) + '%', 'pulsar', pp >= cfg.threshold ? 'Flagged as a pulsar candidate worth a look.' : 'Looks like radio noise.');
+    }
+  }
+
+  scope.start();
+  selectTab(S.key, false);
+})();
+</script>
+</body>
+</html>

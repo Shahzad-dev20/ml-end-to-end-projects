@@ -1,0 +1,10 @@
+numpy
+pandas
+scikit-learn>=1.5
+matplotlib
+seaborn
+joblib
+jupyter
+flask
+gradio>=5
+pytest
